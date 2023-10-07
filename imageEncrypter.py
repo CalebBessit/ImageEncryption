@@ -32,7 +32,7 @@ def generateCleanSequence(iterations, x_0, y_0):
         x, y = f(x,y)
 
     iterations -=1000
-    xvals, yvals = []
+    xvals, yvals = [], []
     for j in range(iterations):
         x, y = f(x,y)
         xvals.append(x)
@@ -57,14 +57,16 @@ def getSubsequence(xsequence, ysequence, k):
 
     # return newSequence
 
-def rho(x, y, z):
-    return np.sqrt(x*x +y*y+z*z)
+def rho(x_n,y_n):
+    return np.mod(  np.floor(  (x_n+y_n)*math.pow(10,8)) ,r+1   )   
 
-def phi():
-    pass
+#Written in the paper as theta_1
+def phi(x_n):
+    return np.deg2rad(  np.mod( np.floor(x_n * math.pow(10,8)) ,181  )  )
 
-def theta():
-    pass
+#Written in the paper as theta_2
+def theta(y_n):
+    return np.deg2rad(  np.mod(  np.floor(y_n* math.pow(10,8)), 361  )  )
 
 
 
@@ -77,15 +79,24 @@ def y(rho, phi, theta):
 def z(rho, phi):
     return rho*np.cos(phi)
 
-def brownianMotion(x,y,z,xStream,yStream):
+def brownianMotion(x_n,y_n,z_n,xStream,yStream):
     global n, r
     for m in range(n):
-        pass
+        r_update        = rho(xStream[m],yStream[m])
+        theta_1_update  = phi(xStream[m])
+        theta_2_update  = theta(yStream[m])
+
+        x_n = x_n + x(r_update, theta_1_update, theta_2_update)
+        y_n = y_n + y(r_update, theta_1_update, theta_2_update)
+        x_n = z_n + z(r_update, theta_1_update)
 
     return x_n, y_n, z_n
 
 def main():
+    global x_0, y_0, mu, k, gain, n
     #Read image data
+
+    print("Loading image data...")
     fileNames = ["","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower"]
     fileName = fileNames[4]
     image = open("TestImages/Grey{}.ppm".format(fileName),"r")
@@ -96,6 +107,8 @@ def main():
         dataStream+= lines[i]
     image.close()
 
+
+    '''Step 3.1'''
     # Encode the string to bytes and update the hash
     sha256Hash = hashlib.sha256()
     dataStream = dataStream.encode('utf-8')
@@ -107,7 +120,7 @@ def main():
     key2 = hexDigest[32:]
     key3 = hex(int(key1, 16) ^ int(key2, 16))
     strKey3 = str(key3)[2:]
-    print(strKey3[0:8])
+    print("Generating image hash and system paramters...")
 
     #Split the key and obtain the 4 plaintext variables
     epsilonValues=[]
@@ -127,7 +140,7 @@ def main():
             runningH /= 15
             epsilonValues.append(runningH)
 
-    print(epsilonValues)
+    # print(epsilonValues)
 
     #Calculate eta and 
     eta = (x_0/y_0) * (mu/k)
@@ -137,34 +150,38 @@ def main():
     muP  = mu + epsilonValues[2]/eta
     kP   = k + epsilonValues[3]/eta
 
-    print(x_0P, y_0P, muP, kP)
+    # print(x_0P, y_0P, muP, kP)
 
+    ''' Part 3.2: Step 1'''
     #Generate Q1 image
     M, N = lines[2].replace("\n","").split(" ")
     low  = min(int(M), int(N))
     hi   = max(int(M), int(N))
 
+    print("Generating full image Q1...")
+
     Q_1 = []
     for i in range(4,len(lines)):
         line = lines[i].replace("\n","")
-        if line.isnumeric()==False:
-            print(i, line)
+        # if line.isnumeric()==False:
+        #     print(i, line)
         Q_1.append(  int( line) )
 
-    print("Len before: ",len(Q_1))
+    # print("Len before: ",len(Q_1))
     if low!=hi:
         extension = (hi*hi)-len(Q_1)
         for i in range(extension):
             Q_1.append(0)
 
-    print(low, hi)
-    print("Len after: ",len(Q_1))
+    # print(low, hi)
+    # print("Len after: ",len(Q_1))
 
 
+    ''' Part 3.2: Step 2'''
     #Reshape array into 2D array for coordinates
     K = hi
     gridQ1 = np.array(Q_1).reshape(K,K)
-    print(gridQ1)
+    # print(gridQ1)
 
     coordOnes = []
     for a in range(K):
@@ -172,12 +189,12 @@ def main():
             coordOnes.append( (a+1,b+1,0))
 
     #Generate chaotic stream using chaotic map
-    global x_0, y_0, mu, k, gain, n
+    
 
     x_0, y_0, mu, k, gain = x_0P, y_0P, muP, kP, math.pow(10, kP)
-
-    xStream, yStream = generateCleanSequence(K*K*n+1000)
-
+    print("Generating chaotic sequences...")
+    xStream, yStream = generateCleanSequence(K*K*n+1000, x_0, y_0)
+    print("Implementing Brownian motion...")
     unnormalizedSeq = []
 
     for c in range(K*K):
@@ -192,6 +209,59 @@ def main():
 
         x_A, y_A, z_A = brownianMotion(x_A,y_A,z_A,x_AStream,y_AStream)
 
+        unnormalizedSeq.append(  (x_A, y_A)  )
+
+    '''Part 3.2: Step 4'''
+
+    print("Normalizing data...")
+    minX = min(item[0] for item in unnormalizedSeq)
+    maxX = max(item[0] for item in unnormalizedSeq)
+
+    minY = min(item[1] for item in unnormalizedSeq)
+    maxY = max(item[1] for item in unnormalizedSeq)
+    #Begin normalizing values
+    xNorm, yNorm = [],[]
+
+    for m in unnormalizedSeq:
+        xNorm.append(   (  (m[0]-minX) * (K)    )  /  (maxX-minX)     )
+        yNorm.append(   (  (m[1]-minY) * (K)    )  /  (maxY-minY)     )
+
+    print("Generating ranking array...")
+    tempX           = np.array(xNorm).argsort()
+    L_primeX        = np.empty_like(tempX)
+    L_primeX[tempX] = np.arange(K*K)
+
+    tempY           = np.array(yNorm).argsort()
+    L_primeY        = np.empty_like(tempY)
+    L_primeY[tempY] = np.arange(K*K)
+
+    '''Part 3.2: Step 5'''
+    #Generate scrambled image. Ranking array acts as a bijective map
+    Q_2 = []
+    print("Generating scrambled image Q2...")
+    normalLPrime = L_primeX.tolist()
+    for e in range(K*K):
+        ind = normalLPrime.index(e)
+        Q_2.append(Q_1[ind])
+
+    print(K, len(Q_2))
+
+    print("Saving scrambled image to file...")
+
+    fileHeader = "P2\n# Scrambled Image\n{} {}\n255\n".format(K,K)
+    
+    for f in range(len(Q_2)):
+        Q_2[f] = str(Q_2[f]) + "\n"
+
+    fileContent = "".join(Q_2)
+    fileContent = fileHeader + fileContent
+
+    scrambledImage = open("TestImages/GreyScrambled{}.ppm".format(fileName),"w")
+    scrambledImage.write(fileContent)
+    scrambledImage.close()
+
+    print("Done.")
+    '''Part 3.3: Rubik's cube transformation'''
 
 
 if __name__=="__main__":
