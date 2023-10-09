@@ -1,6 +1,6 @@
-#Image Encryption using a the 2D-LCCM
+#Image decrypter for encrypted images
 #Caleb Bessit
-#05 October 2023
+#08 October 2023
 
 import math
 import hashlib
@@ -11,6 +11,7 @@ x_0, y_0, mu, k = 1,1,1,1
 gain            = math.pow(10,k)
 n               = 20
 r               = 100
+hexDigest       = "dfd89ba48a86717f3617685a7018a0f6ed98ce84c39a2171c1418fdc90769dff"
 
 def f(x, y):
     global mu, gain
@@ -93,28 +94,14 @@ def brownianMotion(x_n,y_n,z_n,xStream,yStream):
     return x_n, y_n, z_n
 
 
-def generateChaoticMatrices(x2n, y2n,K):
-    a1, a2   = [], []
-    gain = math.pow(10,8)
-    for a in range(K*K):
-         a1.append( np.mod( ( (  x2n[a]    + y2n[a]    +1 ) * gain ), 16) )
-         a2.append( np.mod( ( (  x2n[a]**2 + y2n[a]**2 +1 ) * gain ), 16) )
-
-    a1 = np.array(a1).reshape(K,K)
-    a2 = np.array(a2).reshape(K,K)
-
-    return a1, a2
-
-
-
 def main():
-    global x_0, y_0, mu, k, gain, n
+    global x_0, y_0, mu, k, gain, n, hexDigest
     #Read image data
 
     print("Loading image data...")
     fileNames = ["","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower"]
     fileName = fileNames[3]
-    image = open("TestImages/Grey{}.ppm".format(fileName),"r")
+    image = open("TestImages/GreyScrambled{}.ppm".format(fileName),"r")
 
     lines = image.readlines()
     dataStream=""
@@ -122,21 +109,13 @@ def main():
         dataStream+= lines[i]
     image.close()
 
-
-    '''Step 3.1'''
-    # Encode the string to bytes and update the hash
-    sha256Hash = hashlib.sha256()
-    dataStream = dataStream.encode('utf-8')
-    sha256Hash.update(dataStream)
-    hexDigest = sha256Hash.hexdigest()
-
     #Generate the three keys
     key1 = hexDigest[0:32]
     key2 = hexDigest[32:]
     key3 = hex(int(key1, 16) ^ int(key2, 16))
     strKey3 = str(key3)[2:]
     print("Generating image hash and system parameters...")
-    print("Hash value: {}".format(hexDigest))
+
     #Split the key and obtain the 4 plaintext variables
     epsilonValues=[]
 
@@ -242,28 +221,25 @@ def main():
         yNorm.append(   (  (m[1]-minY) * (K)    )  /  (maxY-minY)     )
 
     print("Generating ranking array...")
-
-    #Suffixed with "X" because it ranks based on x-coordinates
     tempX           = np.array(xNorm).argsort()
     L_primeX        = np.empty_like(tempX)
     L_primeX[tempX] = np.arange(K*K)
 
-    '''Part 3.2: Step 5'''
-    #Generate scrambled image. Ranking array acts as a bijective map
-    print("Generating scrambled image Q2...")
-    # normalLPrime = L_primeX.tolist()
-    # for e in range(K*K):
-    #     ind = normalLPrime.index(e)
-    #     Q_2.append(Q_1[ind])
+    print("Reversing ranking map...")
 
+    p        = np.asanyarray(L_primeX)
+    s        = np.empty_like(p)
+    s[p]     = np.arange(p.size)
+    L_primeX = s
+
+    print("Unscrambling image Q2 -> Q1...")
     tempArr = np.array(Q_1)
     sortedIndices = np.argsort(L_primeX)
     Q_2 = tempArr[sortedIndices]
 
     Q_2 = Q_2.tolist()
-    print(K, len(Q_2))
 
-    print("Saving scrambled image to file...")
+    print("Saving unscrambled image to file...")
 
     fileHeader = "P2\n# Scrambled Image\n{} {}\n255\n".format(K,K)
     
@@ -273,32 +249,11 @@ def main():
     fileContent = "".join(Q_2)
     fileContent = fileHeader + fileContent
 
-    scrambledImage = open("TestImages/GreyScrambled{}.ppm".format(fileName),"w")
+    scrambledImage = open("TestImages/GreyUnScrambled{}.ppm".format(fileName),"w")
     scrambledImage.write(fileContent)
     scrambledImage.close()
 
     print("Done.")
 
-
-    '''Part 3.3: Rubik's cube transformation'''
-    #Get the X_{2n} and Y_{2n} subsequences
-
-    x_2n = xStream[0:K*K]
-    y_2n = yStream[0:K*K]
-
-    A1, A2   = generateChaoticMatrices(x_2n, y_2n, K)
-
-    #Reshape scrambled image
-    Q_3Bin = np.array(Q_2).reshape(K,K)
-
-    Q_3Hi, Q_3Lo = [],[]
-
-#Iterate over Q2 and convert to binary, split into upper and lower bits,
-#store upper and lower halves respectively
-    for g in range(K*K):
-        pass
-
-
-
-if __name__=="__main__":
+if __name__ == "__main__":
     main()

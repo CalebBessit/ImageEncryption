@@ -243,14 +243,39 @@
 
 
 '''Print test'''
-K = 10
-fileHeader = "P2\n# Scrambled Image\n{} {}\n255\n".format(K,K)
+# K = 10
+# fileHeader = "P2\n# Scrambled Image\n{} {}\n255\n".format(K,K)
     
-Q_2 = [1,2,3,4,5,6,7,8]
+# Q_2 = [1,2,3,4,5,6,7,8]
 
-for f in range(len(Q_2)):
-        Q_2[f] = str(Q_2[f]) + "\n"
+# for f in range(len(Q_2)):
+#         Q_2[f] = str(Q_2[f]) + "\n"
 
-fileContent = "".join(Q_2)
-fileContent = fileHeader + fileContent
-print(fileContent)
+# fileContent = "".join(Q_2)
+# fileContent = fileHeader + fileContent
+# print(fileContent)1
+
+'''Inverse ranking test'''
+# import numpy as np
+
+# m = [4, 2, 0, 1, 3]
+
+# new = np.zeros(len(m)).tolist()
+
+# count = -1
+# for l in m:
+#     count+=1
+#     new[l] = count
+
+# print(new)
+
+# import numpy as np
+
+# m = [4, 2, 0, 1, 3]
+
+# p = np.asanyarray(m)
+# s = np.empty_like(p)
+# s[p] = np.arange(p.size)
+
+# s = s.tolist()
+# print(s)
