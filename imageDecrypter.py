@@ -11,7 +11,7 @@ x_0, y_0, mu, k = 1,1,1,1
 gain            = math.pow(10,k)
 n               = 20
 r               = 100
-hexDigest       = "dfd89ba48a86717f3617685a7018a0f6ed98ce84c39a2171c1418fdc90769dff"
+hexDigest       = ""
 
 def f(x, y):
     global mu, gain
@@ -93,6 +93,21 @@ def brownianMotion(x_n,y_n,z_n,xStream,yStream):
 
     return x_n, y_n, z_n
 
+def generateChaoticMatrices(x2n, y2n,K):
+    a1, a2   = [], []
+    gain = math.pow(10,8)
+    for a in range(K*K):
+         #Calculate the values for the chaotic matrices and convert them to 8-bit binary values
+         t1 = np.mod( int( (  x2n[a]    + y2n[a]    +1 ) * gain ), 16)
+         a1.append( bin(t1 & 0xFF)[2:].zfill(8) )
+
+         t1 = np.mod( int( (  x2n[a]**2 + y2n[a]**2 +1 ) * gain ), 16) 
+         a2.append( bin(t1 & 0xFF)[2:].zfill(8)  )
+
+    a1 = np.array(a1).reshape(K,K)
+    a2 = np.array(a2).reshape(K,K)
+
+    return a1, a2
 
 def main():
     global x_0, y_0, mu, k, gain, n, hexDigest
@@ -100,8 +115,19 @@ def main():
 
     print("Loading image data...")
     fileNames = ["","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower"]
-    fileName = fileNames[3]
-    image = open("TestImages/GreyScrambled{}.ppm".format(fileName),"r")
+    hashCodes = ["",
+                 "",
+                 "",
+                 "dfd89ba48a86717f3617685a7018a0f6ed98ce84c39a2171c1418fdc90769dff",
+                 "bb2d1c24e50ce9d49a7555c6864e190e955503a815fb5c3155fc6f20c36768a6",
+                 "",
+                 "",
+                 ""]
+    
+    fileIndex = 3
+    fileName = fileNames[fileIndex]
+    hexDigest = hashCodes[fileIndex]
+    image = open("TestImages/GreyEncrypted{}.ppm".format(fileName),"r")
 
     lines = image.readlines()
     dataStream=""
@@ -151,36 +177,13 @@ def main():
     M, N = lines[2].replace("\n","").split(" ")
     low  = min(int(M), int(N))
     hi   = max(int(M), int(N))
-
+    K = hi
     print("Generating full image Q1...")
 
     Q_1 = []
     for i in range(4,len(lines)):
         line = lines[i].replace("\n","")
-        # if line.isnumeric()==False:
-        #     print(i, line)
         Q_1.append(  int( line) )
-
-    # print("Len before: ",len(Q_1))
-    if low!=hi:
-        extension = (hi*hi)-len(Q_1)
-        for i in range(extension):
-            Q_1.append(0)
-
-    # print(low, hi)
-    # print("Len after: ",len(Q_1))
-
-
-    ''' Part 3.2: Step 2'''
-    #Reshape array into 2D array for coordinates
-    K = hi
-    gridQ1 = np.array(Q_1).reshape(K,K)
-    # print(gridQ1)
-
-    coordOnes = []
-    for a in range(K):
-        for b in range(K):
-            coordOnes.append( (a+1,b+1,0))
 
     #Generate chaotic stream using chaotic map
     
@@ -188,6 +191,77 @@ def main():
     x_0, y_0, mu, k, gain = x_0P, y_0P, muP, kP, math.pow(10, kP)
     print("Generating chaotic sequences...")
     xStream, yStream = generateCleanSequence(K*K*n+1000, x_0, y_0)
+
+    print("Extracting subsequences for decryption...")
+    x_2n = xStream[0:K*K]
+    y_2n = yStream[0:K*K]
+
+    print("Generating chaotic matrices...")
+    A1, A2   = generateChaoticMatrices(x_2n, y_2n, K)
+
+    Q_2Hi, Q_2Lo = [],[]
+
+#Iterate over Q2 and convert to binary, split into upper and lower bits,
+#store upper and lower halves respectively
+    print("Splitting binary values...")
+    for g in Q_1:
+        binVal = bin(g & 0xFF)[2:].zfill(8) #Convert to binary
+        Q_2Hi.append(binVal[0:4])
+        Q_2Lo.append(binVal[4:])
+
+
+    Q_2Hi, Q_2Lo = np.array(Q_2Hi).reshape(K,K),np.array(Q_2Lo).reshape(K,K)
+
+
+    def F(i,j):
+        return int("0b"+Q_2Lo[i][j],2) ^ int("0b"+A1[i][j],2) ^ int("0b"+A2[K-1-i][K-1-j],2)
+
+    def G(i,j):
+        return int("0b"+Q_2Hi[i][j],2) ^ int("0b"+A1[K-1-i][K-1-j],2) ^ int("0b"+A2[i][j],2)
+
+
+    #Iterate and find Q2H' and Q2L' by diffusing using Henon map
+    precision = math.pow(10,8)
+    k_0, k_1  = 1, 1
+
+    Q_2HiPri, Q_2LoPri = np.zeros(K*K).reshape(K,K),np.zeros(K*K).reshape(K,K)
+    for o in range(K-1,-1,-1):
+        for p in range(K-1,-1,-1):
+            #Lower
+            if (o==0 and p==0):
+                Q_2LoPri[o][p] = int(F(o,p)) ^  int (np.mod( np.floor( (1-1.4 * (k_0/15)**2 + (k_1/15)) *precision ) ,16))
+                Q_2HiPri[o][p] = int(G(o,p)) ^ int(np.mod( np.floor(0.3 * (k_0/15) *precision)  ,16))
+            elif (o!=0 and p==0):
+                Q_2LoPri[o][p] = int(F(o,p)) ^ int(np.mod( np.floor( (1-1.4 * (Q_2LoPri[o-1][p-1]/15)**2 + (Q_2HiPri[o][p-1]/15)) *precision ) ,16))
+                Q_2HiPri[o][p] = int(G(o,p)) ^ int(np.mod( np.floor(0.3 * (Q_2LoPri[o-1][K-1]/15) *precision) ,16))
+            elif (p!=0):
+                Q_2LoPri[o][p] = int(F(o,p)) ^ int(np.mod( np.floor( (1-1.4 * (Q_2LoPri[o][p-1]/15)**2 + (Q_2HiPri[o][p-1]/15)) *precision ) ,16))
+                Q_2HiPri[o][p] = int(G(o,p)) ^ int(np.mod( np.floor(0.3 * (Q_2LoPri[o][p-1]/15) *precision) ,16))
+            
+           
+                
+            
+
+    #Recombine encrypted matrices
+    Q_2HiPri = Q_2HiPri.reshape(1,K*K)[0].tolist()
+    Q_2LoPri = Q_2LoPri.reshape(1,K*K)[0].tolist()
+
+    Q_2 = []
+
+    for q in range(len(Q_2HiPri)):
+        value = "0b" + bin(int(Q_2HiPri[q]))[2:].zfill(4) + bin(int(Q_2LoPri[q]))[2:].zfill(4)
+        Q_2.append(int(value,2))
+
+    ''' Part 3.2: Step 2'''
+    #Reshape array into 2D array for coordinates
+    
+
+    coordOnes = []
+    for a in range(K):
+        for b in range(K):
+            coordOnes.append( (a+1,b+1,0))
+
+    
     print("Implementing Brownian motion...")
     unnormalizedSeq = []
 
@@ -233,25 +307,25 @@ def main():
     L_primeX = s
 
     print("Unscrambling image Q2 -> Q1...")
-    tempArr = np.array(Q_1)
+    tempArr = np.array(Q_2)
     sortedIndices = np.argsort(L_primeX)
-    Q_2 = tempArr[sortedIndices]
+    Q_0 = tempArr[sortedIndices]
 
-    Q_2 = Q_2.tolist()
+    Q_0 = Q_0.tolist()
 
-    print("Saving unscrambled image to file...")
+    print("Saving decrypted image to file...")
 
-    fileHeader = "P2\n# Scrambled Image\n{} {}\n255\n".format(K,K)
+    fileHeader = "P2\n# Decrypted Image\n{} {}\n255\n".format(K,K)
     
-    for f in range(len(Q_2)):
-        Q_2[f] = str(Q_2[f]) + "\n"
+    for f in range(len(Q_0)):
+        Q_0[f] = str(Q_0[f]) + "\n"
 
-    fileContent = "".join(Q_2)
+    fileContent = "".join(Q_0)
     fileContent = fileHeader + fileContent
 
-    scrambledImage = open("TestImages/GreyUnScrambled{}.ppm".format(fileName),"w")
-    scrambledImage.write(fileContent)
-    scrambledImage.close()
+    decryptedImage = open("TestImages/GreyDecrypted{}.ppm".format(fileName),"w")
+    decryptedImage.write(fileContent)
+    decryptedImage.close()
 
     print("Done.")
 

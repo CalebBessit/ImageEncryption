@@ -3,6 +3,7 @@
 #05 October 2023
 
 import math
+import struct
 import hashlib
 import numpy as np
 
@@ -97,15 +98,34 @@ def generateChaoticMatrices(x2n, y2n,K):
     a1, a2   = [], []
     gain = math.pow(10,8)
     for a in range(K*K):
-         a1.append( np.mod( ( (  x2n[a]    + y2n[a]    +1 ) * gain ), 16) )
-         a2.append( np.mod( ( (  x2n[a]**2 + y2n[a]**2 +1 ) * gain ), 16) )
+         #Calculate the values for the chaotic matrices and convert them to 8-bit binary values
+         t1 = np.mod( int( (  x2n[a]    + y2n[a]    +1 ) * gain ), 16)
+         a1.append( bin(t1 & 0xFF)[2:].zfill(8) )
+
+         t1 = np.mod( int( (  x2n[a]**2 + y2n[a]**2 +1 ) * gain ), 16) 
+         a2.append( bin(t1 & 0xFF)[2:].zfill(8)  )
 
     a1 = np.array(a1).reshape(K,K)
     a2 = np.array(a2).reshape(K,K)
 
     return a1, a2
 
+def floatToBin(num):
+    binRep = struct.pack('d', num)
+    binString = ''.join(f'{byte:08b}' for byte in binRep)
+    return np.array([int(bit) for bit in binString])
 
+def xor(float1, float2):
+    binaryStr1 = floatToBin(float1)
+    binaryStr2 = floatToBin(float2)
+    xor_result = np.bitwise_xor(binaryStr1, binaryStr2)
+    return ''.join(map(str, xor_result))
+
+def binToFloat(binString):
+    byteList = [int(binString[i:i+8], 2) for i in range(0, len(binString), 8)]
+    packedBytes = bytes(bytearray(byteList))
+    unpackedFloat = struct.unpack('d', packedBytes)[0]
+    return unpackedFloat
 
 def main():
     global x_0, y_0, mu, k, gain, n
@@ -261,32 +281,35 @@ def main():
     Q_2 = tempArr[sortedIndices]
 
     Q_2 = Q_2.tolist()
-    print(K, len(Q_2))
+    # print(K, len(Q_2))
 
-    print("Saving scrambled image to file...")
+    # print("Saving scrambled image to file...")
 
-    fileHeader = "P2\n# Scrambled Image\n{} {}\n255\n".format(K,K)
+    # fileHeader = "P2\n# Scrambled Image\n{} {}\n255\n".format(K,K)
     
-    for f in range(len(Q_2)):
-        Q_2[f] = str(Q_2[f]) + "\n"
+    # for f in range(len(Q_2)):
+    #     Q_2[f] = str(Q_2[f]) + "\n"
 
-    fileContent = "".join(Q_2)
-    fileContent = fileHeader + fileContent
+    # fileContent = "".join(Q_2)
+    # fileContent = fileHeader + fileContent
 
-    scrambledImage = open("TestImages/GreyScrambled{}.ppm".format(fileName),"w")
-    scrambledImage.write(fileContent)
-    scrambledImage.close()
+    # scrambledImage = open("TestImages/GreyScrambled{}.ppm".format(fileName),"w")
+    # scrambledImage.write(fileContent)
+    # scrambledImage.close()
 
-    print("Done.")
+    # print("Done.")
 
 
     '''Part 3.3: Rubik's cube transformation'''
     #Get the X_{2n} and Y_{2n} subsequences
 
+    print("Extracting subsequences for encryption...")
     x_2n = xStream[0:K*K]
     y_2n = yStream[0:K*K]
 
+    print("Generating chaotic matrices...")
     A1, A2   = generateChaoticMatrices(x_2n, y_2n, K)
+ 
 
     #Reshape scrambled image
     Q_3Bin = np.array(Q_2).reshape(K,K)
@@ -295,10 +318,72 @@ def main():
 
 #Iterate over Q2 and convert to binary, split into upper and lower bits,
 #store upper and lower halves respectively
-    for g in range(K*K):
-        pass
+    print("Splitting binary values...")
+    for g in Q_2:
+        binVal = bin(g & 0xFF)[2:].zfill(8) #Convert to binary
+        Q_3Hi.append(binVal[0:4])
+        Q_3Lo.append(binVal[4:])
 
 
+    Q_3Hi, Q_3Lo = np.array(Q_3Hi).reshape(K,K),np.array(Q_3Lo).reshape(K,K)
+
+
+    #Define f(i,j) and g(i,j)
+
+    def F(i,j):
+        return int("0b"+Q_3Lo[i][j],2) ^ int("0b"+A1[i][j],2) ^ int("0b"+A2[K-1-i][K-1-j],2)
+
+    def G(i,j):
+        return int("0b"+Q_3Hi[i][j],2) ^ int("0b"+A1[K-1-i][K-1-j],2) ^ int("0b"+A2[i][j],2)
+
+
+    #Iterate and find Q3H' and Q3L' by diffusing using Henon map
+    precision = math.pow(10,8)
+    k_0, k_1  = 1, 1
+
+    print("Starting diffusion...")
+    Q_3HiPri, Q_3LoPri = np.zeros(K*K).reshape(K,K),np.zeros(K*K).reshape(K,K)
+    for o in range(K):
+        for p in range(K):
+            
+            #Lower
+            if (o==0 and p==0):
+                Q_3LoPri[o][p] = int(F(o,p)) ^  int (np.mod( np.floor( (1-1.4 * (k_0/15)**2 + (k_1/15)) *precision ) ,16))
+                Q_3HiPri[o][p] = int(G(o,p)) ^ int(np.mod( np.floor(0.3 * (k_0/15) *precision)  ,16))
+            elif (o!=0 and p==0):
+                Q_3LoPri[o][p] = int(F(o,p)) ^ int(np.mod( np.floor( (1-1.4 * (Q_3LoPri[o-1][p-1]/15)**2 + (Q_3HiPri[o][p-1]/15)) *precision ) ,16))
+                Q_3HiPri[o][p] = int(G(o,p)) ^ int(np.mod( np.floor(0.3 * (Q_3LoPri[o-1][K-1]/15) *precision) ,16))
+            elif (p!=0):
+                Q_3LoPri[o][p] = int(F(o,p)) ^ int(np.mod( np.floor( (1-1.4 * (Q_3LoPri[o][p-1]/15)**2 + (Q_3HiPri[o][p-1]/15)) *precision ) ,16))
+                Q_3HiPri[o][p] = int(G(o,p)) ^ int(np.mod( np.floor(0.3 * (Q_3LoPri[o][p-1]/15) *precision) ,16))
+            
+
+
+    #Recombine encrypted matrices
+    Q_3HiPri = Q_3HiPri.reshape(1,K*K)[0].tolist()
+    Q_3LoPri = Q_3LoPri.reshape(1,K*K)[0].tolist()
+
+    Q_4 = []
+
+    for q in range(len(Q_3HiPri)):
+        value = "0b" + bin(int(Q_3HiPri[q]))[2:].zfill(4) + bin(int(Q_3LoPri[q]))[2:].zfill(4)
+        Q_4.append( str(int(value, 2)) +"\n" )
+
+    print("Diffusion complete.")
+    print("Saving encrypted image to file...")
+
+    fileHeader = "P2\n# Encrypted Image\n{} {}\n255\n".format(K,K)
+
+    fileContent = "".join(Q_4)
+    fileContent = fileHeader + fileContent
+
+    scrambledImage = open("TestImages/GreyEncrypted{}.ppm".format(fileName),"w")
+    scrambledImage.write(fileContent)
+    scrambledImage.close()
+
+    print("Done.")
+   
+    
 
 if __name__=="__main__":
     main()
