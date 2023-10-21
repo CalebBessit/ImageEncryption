@@ -3,15 +3,16 @@
 #08 October 2023
 
 import math
-import hashlib
 import numpy as np
 
 #INITIAL KEYS
-x_0, y_0, mu, k = 1,1,1,1
+x_0, y_0, mu, k = 1,1,10,10+math.pow(10,-15)
 gain            = math.pow(10,k)
 n               = 20
 r               = 100
-hexDigest       = ""
+hexDigest       = "NULL"
+fileName        = "NULL"
+useDefault      = True
 
 def f(x, y):
     global mu, gain
@@ -110,24 +111,37 @@ def generateChaoticMatrices(x2n, y2n,K):
     return a1, a2
 
 def main():
-    global x_0, y_0, mu, k, gain, n, hexDigest
+    global x_0, y_0, mu, k, gain, n, hexDigest, fileName, useDefault
     #Read image data
 
     print("Loading image data...")
-    fileNames = ["","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower"]
-    hashCodes = ["",
-                 "",
-                 "",
-                 "dfd89ba48a86717f3617685a7018a0f6ed98ce84c39a2171c1418fdc90769dff",
-                 "bb2d1c24e50ce9d49a7555c6864e190e955503a815fb5c3155fc6f20c36768a6",
-                 "",
-                 "",
-                 ""]
+
+    if fileName=="NULL":
+        fileNames = ["","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower","Heh"]
+        fileIndex = 4
+        fileName = fileNames[fileIndex]
+        image = open("TestImages/GreyEncrypted{}.ppm".format(fileName),"r")
+    else:
+        image = open(fileName, "r")
     
-    fileIndex = 3
-    fileName = fileNames[fileIndex]
-    hexDigest = hashCodes[fileIndex]
-    image = open("TestImages/GreyEncrypted{}.ppm".format(fileName),"r")
+    if hexDigest=="NULL":
+        hashCodes = ["",
+                    "",
+                    "",
+                    "dfd89ba48a86717f3617685a7018a0f6ed98ce84c39a2171c1418fdc90769dff",
+                    "bb2d1c24e50ce9d49a7555c6864e190e955503a815fb5c3155fc6f20c36768a6",
+                    "",
+                    "",
+                    "e349ca516897b5701aabd287669bf386404a410ffb35a320efee7945588689b0",
+                    "f5a886d429651f15dcb375ed1bfdabab1bfab24fe652ce8ba9a219e8542d9123"]
+        
+        
+        hexDigest = hashCodes[fileIndex]
+    
+    
+
+    # image = open("TestImages/GreyEncrypted{}30Filled.ppm".format(fileName),"r")
+    # image = open("TestImages/GreyEncrypted{}60Filled.ppm".format(fileName),"r")
 
     lines = image.readlines()
     dataStream=""
@@ -323,7 +337,10 @@ def main():
     fileContent = "".join(Q_0)
     fileContent = fileHeader + fileContent
 
-    decryptedImage = open("TestImages/GreyDecrypted{}.ppm".format(fileName),"w")
+    if useDefault:
+        decryptedImage = open("TestImages/GreyDecrypted{}.ppm".format(fileName),"w")
+    else:
+        decryptedImage = open("GreyDecrypted{}.ppm".format(fileName),"w")
     decryptedImage.write(fileContent)
     decryptedImage.close()
 

@@ -3,15 +3,16 @@
 #05 October 2023
 
 import math
-import struct
 import hashlib
 import numpy as np
 
 #INITIAL KEYS
-x_0, y_0, mu, k = 1,1,1,1
+x_0, y_0, mu, k = 1,1,10,10
 gain            = math.pow(10,k)
 n               = 20
 r               = 100
+fileName        = "NULL"
+useDefault      = True
 
 def f(x, y):
     global mu, gain
@@ -25,7 +26,7 @@ def beta(i):
     global mu
     return np.exp(mu*i*(1-i))
 
-
+#Generates iteration number of terms of the 2D-LCCM map
 def generateCleanSequence(iterations, x_0, y_0):
     x, y = x_0, y_0
 
@@ -41,6 +42,7 @@ def generateCleanSequence(iterations, x_0, y_0):
 
     return xvals, yvals
 
+#Retrieves n terms of the sequences starting from the kth term
 def getSubsequence(xsequence, ysequence, k):
     global n
 
@@ -50,14 +52,8 @@ def getSubsequence(xsequence, ysequence, k):
         yseq.append(ysequence[l])
 
     return xseq, yseq
-    # step = K*K
 
-    # newSequence = []
-    # for l in range(0,step*n, step):
-    #     newSequence.append(sequence[l])
-
-    # return newSequence
-
+#Spherical coordinate angle for Brownian motion
 def rho(x_n,y_n):
     return np.mod(  np.floor(  (x_n+y_n)*math.pow(10,8)) ,r+1   )   
 
@@ -70,7 +66,7 @@ def theta(y_n):
     return np.deg2rad(  np.mod(  np.floor(y_n* math.pow(10,8)), 361  )  )
 
 
-
+#Conversion functions from spherical to rectangluar coordinates
 def x(rho, phi, theta):
     return rho*np.sin(phi)*np.cos(theta)
 
@@ -80,6 +76,8 @@ def y(rho, phi, theta):
 def z(rho, phi):
     return rho*np.cos(phi)
 
+#Implementation of Brownian motion model using chaotic streams.
+#Returns the final position after motion
 def brownianMotion(x_n,y_n,z_n,xStream,yStream):
     global n, r
     for m in range(n):
@@ -93,7 +91,7 @@ def brownianMotion(x_n,y_n,z_n,xStream,yStream):
 
     return x_n, y_n, z_n
 
-
+#Generates two chaotic matrices using chaotic sequences
 def generateChaoticMatrices(x2n, y2n,K):
     a1, a2   = [], []
     gain = math.pow(10,8)
@@ -110,31 +108,22 @@ def generateChaoticMatrices(x2n, y2n,K):
 
     return a1, a2
 
-def floatToBin(num):
-    binRep = struct.pack('d', num)
-    binString = ''.join(f'{byte:08b}' for byte in binRep)
-    return np.array([int(bit) for bit in binString])
-
-def xor(float1, float2):
-    binaryStr1 = floatToBin(float1)
-    binaryStr2 = floatToBin(float2)
-    xor_result = np.bitwise_xor(binaryStr1, binaryStr2)
-    return ''.join(map(str, xor_result))
-
-def binToFloat(binString):
-    byteList = [int(binString[i:i+8], 2) for i in range(0, len(binString), 8)]
-    packedBytes = bytes(bytearray(byteList))
-    unpackedFloat = struct.unpack('d', packedBytes)[0]
-    return unpackedFloat
-
 def main():
-    global x_0, y_0, mu, k, gain, n
+    global x_0, y_0, mu, k, gain, n, fileName, useDefault
     #Read image data
 
     print("Loading image data...")
-    fileNames = ["","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower"]
-    fileName = fileNames[3]
-    image = open("TestImages/Grey{}.ppm".format(fileName),"r")
+
+    
+    #Load from file or use new
+    if fileName=="NULL":
+        fileNames = ["","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower","Heh"]
+        fileName = fileNames[4]
+        image = open("TestImages/Grey{}.ppm".format(fileName),"r")
+    else:
+        image = open(fileName, "r")
+        useDefault = False
+
 
     lines = image.readlines()
     dataStream=""
@@ -206,7 +195,7 @@ def main():
     if low!=hi:
         extension = (hi*hi)-len(Q_1)
         for i in range(extension):
-            Q_1.append(0)
+            Q_1.append(190)
 
     # print(low, hi)
     # print("Len after: ",len(Q_1))
@@ -271,34 +260,13 @@ def main():
     '''Part 3.2: Step 5'''
     #Generate scrambled image. Ranking array acts as a bijective map
     print("Generating scrambled image Q2...")
-    # normalLPrime = L_primeX.tolist()
-    # for e in range(K*K):
-    #     ind = normalLPrime.index(e)
-    #     Q_2.append(Q_1[ind])
+
 
     tempArr = np.array(Q_1)
     sortedIndices = np.argsort(L_primeX)
     Q_2 = tempArr[sortedIndices]
 
     Q_2 = Q_2.tolist()
-    # print(K, len(Q_2))
-
-    # print("Saving scrambled image to file...")
-
-    # fileHeader = "P2\n# Scrambled Image\n{} {}\n255\n".format(K,K)
-    
-    # for f in range(len(Q_2)):
-    #     Q_2[f] = str(Q_2[f]) + "\n"
-
-    # fileContent = "".join(Q_2)
-    # fileContent = fileHeader + fileContent
-
-    # scrambledImage = open("TestImages/GreyScrambled{}.ppm".format(fileName),"w")
-    # scrambledImage.write(fileContent)
-    # scrambledImage.close()
-
-    # print("Done.")
-
 
     '''Part 3.3: Rubik's cube transformation'''
     #Get the X_{2n} and Y_{2n} subsequences
@@ -377,7 +345,11 @@ def main():
     fileContent = "".join(Q_4)
     fileContent = fileHeader + fileContent
 
-    scrambledImage = open("TestImages/GreyEncrypted{}.ppm".format(fileName),"w")
+    if useDefault:
+        scrambledImage = open("TestImages/GreyEncrypted{}.ppm".format(fileName),"w")
+    else:
+        scrambledImage = open("GreyEncrypted{}.ppm".format(fileName),"w")
+
     scrambledImage.write(fileContent)
     scrambledImage.close()
 

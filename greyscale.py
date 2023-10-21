@@ -3,9 +3,9 @@ n = 270
 
 newlines = []
 
-fileNames = ["","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower"]
+fileNames = ["","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower","GHeh"]
 
-for f in range(1,8):
+for f in range(8,9):
     fileName= fileNames[f]
     newlines = []
     file = open("TestImages/{}.ppm".format(fileName),"r")
