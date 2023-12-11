@@ -6,7 +6,7 @@ import math
 import numpy as np
 
 #INITIAL KEYS
-x_0, y_0, mu, k = 1,1,10,10+math.pow(10,-15)
+x_0, y_0, mu, k = 1,1,10,10
 gain            = math.pow(10,k)
 n               = 20
 r               = 100
@@ -110,6 +110,109 @@ def generateChaoticMatrices(x2n, y2n,K):
 
     return a1, a2
 
+#Generates a chaotic matrix based on the rule x2n^(p1)-y2n^(p2)+1
+def generateSecondaryChaoticMatrices(x2n,y2n,p1,p2,K):
+    gain = math.pow(10,8)
+    x = np.array(x2n)
+    y = np.array(y2n)
+
+    s = (x**p1 - y**p2 +1)*gain
+    s = s.astype(int)
+    s = np.mod(s,256)
+
+    return s.reshape((K,K))
+
+def generateTernaryChaoticMatrices(sequence,modulus):
+    gain = math.pow(10,8)
+    x = sequence[0:1000]
+    x = np.array(x)*gain
+    x = x.astype(int)
+    x = np.mod(x,modulus)
+
+    return list(x)
+
+
+def binaryMask(subsequence):
+    x = np.array(subsequence)
+    return np.where(x>0.5,1,0)
+
+
+def rotateRow(matrices, index):
+    temps = []
+    lastRow = matrices[-1][index].copy()
+    for m in range(len(matrices)-1,0,-1):
+        #Make a copy of row of interest in previous matrix
+        #Make copy of current matrix
+        #Exchange current row with row of interest, add to list
+        tempRow     = matrices[m-1][index].copy()
+        temp        = matrices[m].copy()
+        temp[index] = tempRow
+        temps.append(temp)
+
+    #Do for last index to "wrap around"
+    temp = matrices[0].copy()
+    temp[index] = lastRow
+    temps.append(temp)
+
+    #Correct list order
+    return list(reversed(temps))
+
+def rotateColumn(matrices, index):
+    temp = []
+    for m in matrices:
+        temp.append(m.copy().T)
+    
+    exchangedTemp = rotateRow(temp, index)
+
+    result = []
+    for e in exchangedTemp:
+        result.append(e.copy().T)
+    
+    return result
+
+def scrambleRubiksCube(f1, f2, f3, f4, f5, f6, rOC,direction,index,extent):
+
+    m1, m2, m3, m4, m5, m6 = f1.copy(), f2.copy(), f3.copy(), f4.copy(), f5.copy(), f6.copy()
+    
+    for i in range(len(extent)):
+        ext = int(extent[i])+1
+        if ext==4:
+            continue
+        elif ext==2:
+            #Double rotation: use two opposing faces
+
+            #Rotate a row
+            if int(rOC[i]==0):
+                m1, m6 = rotateRow([m1,m6],int(index[i]))
+                m3, m5 = rotateRow([m3,m5],int(index[i]))
+            else:
+                #Rotate a column
+                m1, m6 = rotateColumn([m1,m6],int(index[i]))
+                m2, m4 = rotateColumn([m2,m4],int(index[i]))
+        else:
+            #Single rotation. Here, direction matters
+            #If it is a rotation by 3, flip the direction and rotate by one
+            direc = int(direction[i])
+            if int(extent[i]==3):
+                direc = 1 if (direc==0) else 0
+
+            if int(rOC[i]==0):
+                if direc==0:
+                    m1, m5, m6, m3 = rotateRow([m1,m5,m6,m3],int(index[i]))
+                else:
+                    m3, m6, m5, m1 = rotateRow([m3,m6,m5,m1],int(index[i]))
+                
+            else:
+                if direc==0:
+                    m1, m2, m6, m4 = rotateColumn([m1, m2, m6, m4],int(index[i]))
+                else:
+                    m4, m6, m2, m1 = rotateColumn([m4, m6, m2, m1],int(index[i]))
+
+    
+    return [m1, m2, m3, m4, m5, m6]
+
+
+
 def main():
     global x_0, y_0, mu, k, gain, n, hexDigest, fileName, useDefault
     #Read image data
@@ -124,19 +227,23 @@ def main():
     else:
         image = open(fileName, "r")
     
-    if hexDigest=="NULL":
-        hashCodes = ["",
-                    "",
-                    "",
-                    "dfd89ba48a86717f3617685a7018a0f6ed98ce84c39a2171c1418fdc90769dff",
-                    "bb2d1c24e50ce9d49a7555c6864e190e955503a815fb5c3155fc6f20c36768a6",
-                    "",
-                    "",
-                    "e349ca516897b5701aabd287669bf386404a410ffb35a320efee7945588689b0",
-                    "f5a886d429651f15dcb375ed1bfdabab1bfab24fe652ce8ba9a219e8542d9123"]
+    # if hexDigest=="NULL":
+    #     hashCodes = ["",
+    #                 "",
+    #                 "",
+    #                 "dfd89ba48a86717f3617685a7018a0f6ed98ce84c39a2171c1418fdc90769dff",
+    #                 "bb2d1c24e50ce9d49a7555c6864e190e955503a815fb5c3155fc6f20c36768a6",
+    #                 "",
+    #                 "",
+    #                 "e349ca516897b5701aabd287669bf386404a410ffb35a320efee7945588689b0",
+    #                 "f5a886d429651f15dcb375ed1bfdabab1bfab24fe652ce8ba9a219e8542d9123"]
         
         
-        hexDigest = hashCodes[fileIndex]
+    #     hexDigest = hashCodes[fileIndex]
+    decData = open("DecryptionData/{}.txt".format(fileName),"r")
+    hexDigest = decData.readline()
+    hexDigest = hexDigest[hexDigest.rfind(":")+2:]
+    decData.close()
     
     
 
@@ -268,8 +375,28 @@ def main():
 
     ''' Part 3.2: Step 2'''
     #Reshape array into 2D array for coordinates
-    
+    print("Retrieving decryption arrays from file...")
+    loadedArray = np.load("DecryptionData/{}.npy".format(fileName),allow_pickle=True)
+    S1, S2, S3, S4, S5 = loadedArray
+    print("Splicing into and unscrambling virtual Rubik's cube...")
 
+    xSub, ySub = x_2n[0:1000], y_2n[0:1000]
+
+    S6 = binaryMask(xSub)   #0=Row rotation, 1=column rotation
+    S7 = binaryMask(ySub)   #0=left/up, 1=right/down
+
+    S8 = generateTernaryChaoticMatrices(xSub,K)
+    S9 = generateTernaryChaoticMatrices(ySub,4)
+
+    #Reverse to undo
+    S6, S7, S8, S9 = list(reversed(S6)), list(reversed(S7)), list(reversed(S8)), list(reversed(S9))
+
+    S0 = np.array(Q_2).reshape((K,K))
+
+    S0,S1,S2,S3,S4,S5 = scrambleRubiksCube(S0,S1,S2,S3,S4,S5,S6,S7,S8,S9)
+    Q_2 = list(S0.reshape(1,K*K)[0])
+
+    print("Done with Rubik's cube transformation.")
     coordOnes = []
     for a in range(K):
         for b in range(K):
