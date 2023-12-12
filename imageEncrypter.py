@@ -5,14 +5,17 @@
 import math
 import hashlib
 import numpy as np
+import multiprocessing
+
 
 #INITIAL KEYS
-x_0, y_0, mu, k = 1,1,10,10
-gain            = math.pow(10,k)
-n               = 20
-r               = 100
-fileName        = "NULL"
-useDefault      = True
+x_0, y_0, mu, k     = 1,1,8,8
+x_0S, y_0S, muS, kS = x_0, y_0, mu, k  
+gain                = math.pow(10,k)
+n                   = 20
+r                   = 100
+fileName            = "NULL"
+useDefault          = True
 
 def f(x, y):
     global mu, gain
@@ -80,16 +83,25 @@ def z(rho, phi):
 #Returns the final position after motion
 def brownianMotion(x_n,y_n,z_n,xStream,yStream):
     global n, r
-    for m in range(n):
-        r_update        = rho(xStream[m],yStream[m])
-        theta_1_update  = phi(xStream[m])
-        theta_2_update  = theta(yStream[m])
 
-        x_n = x_n + x(r_update, theta_1_update, theta_2_update)
-        y_n = y_n + y(r_update, theta_1_update, theta_2_update)
-        x_n = z_n + z(r_update, theta_1_update)
+    xS, yS          = np.array(xStream), np.array(yStream)
+    r_update        = rho(xS,yS)
+    theta_1_update  = phi(xS)
+    theta_2_update  = theta(yS)
 
-    return x_n, y_n, z_n
+    updateX = x(r_update, theta_1_update, theta_2_update)
+    updateY = y(r_update, theta_1_update, theta_2_update)
+    # for m in range(n):
+    #     r_update        = rho(xStream[m],yStream[m])
+    #     theta_1_update  = phi(xStream[m])
+    #     theta_2_update  = theta(yStream[m])
+
+    #     x_n = x_n + x(r_update, theta_1_update, theta_2_update)
+    #     y_n = y_n + y(r_update, theta_1_update, theta_2_update)
+    #     x_n = z_n + z(r_update, theta_1_update)
+    x_n = n*x_n + np.sum(updateX)
+    y_n = n*y_n + np.sum(updateY)
+    return x_n, y_n
 
 def eightBitStringify(x):
     return bin(x & 0xFF)[2:].zfill(8)
@@ -225,7 +237,14 @@ def scrambleRubiksCube(f1, f2, f3, f4, f5, f6, rOC,direction,index,extent):
     return [m1, m2, m3, m4, m5, m6]
 
 
-
+def processData(coordOnes, xStream, yStream, n, c, unnormalizedSeq):
+    x_A, y_A, z_A = coordOnes[c]
+    start = c * n
+    end = start + n
+    x_AStream = xStream[start:end]
+    y_AStream = yStream[start:end]
+    x_A, y_A, z_A = brownianMotion(x_A, y_A, z_A, x_AStream, y_AStream)
+    unnormalizedSeq[c] = (x_A, y_A)
 
 
 def main():
@@ -338,22 +357,40 @@ def main():
     x_0, y_0, mu, k, gain = x_0P, y_0P, muP, kP, math.pow(10, kP)
     print("Generating chaotic sequences...")
     xStream, yStream = generateCleanSequence(K*K*n+1000, x_0, y_0)
-    print("Implementing Brownian motion...")
-    unnormalizedSeq = []
+    print("Implementing parallelized Brownian motion...")
+    
+    # numProcesses    = multiprocessing.cpu_count()
+    # pool            = multiprocessing.Pool(processes=numProcesses)
+    unnormalizedSeq = list(np.zeros(K*K))
 
-    for c in range(K*K):
-        #Get initial coordinates of this point
-        x_A, y_A, z_A = coordOnes[c]
+    # pool.starmap(processData, [(coordOnes, xStream, yStream, n, c, unnormalizedSeq) for c in range(K * K)])
 
-        #Get stream points for this point
-        start= c*n
-        end  = start+n
-        x_AStream = xStream[start:end]
-        y_AStream = yStream[start:end]
+    # # Close the pool of processes
+    # pool.close()
+    # pool.join()
 
-        x_A, y_A, z_A = brownianMotion(x_A,y_A,z_A,x_AStream,y_AStream)
+    streamListX, streamListY = np.array(xStream).reshape(-1,n).tolist(), np.array(yStream).reshape(-1,n).tolist()
 
-        unnormalizedSeq.append(  (x_A, y_A)  )
+    # for c in range(K*K):
+    #     #Get initial coordinates of this point
+    #     x_A, y_A, z_A = coordOnes[c]
+
+    #     #Get stream points for this point
+        
+    #     x_A, y_A = brownianMotion(x_A,y_A,z_A,streamListX[c],streamListY[c])
+
+    #     unnormalizedSeq[c] = (x_A, y_A) 
+
+    # Using list comprehension to perform the operations
+    # Assuming streamListX and streamListY are already generated using NumPy's reshape method
+# Also assuming K and unnormalizedSeq are defined
+
+    unnormalizedSeq = [
+        brownianMotion(x, y, z, streamListX[c], streamListY[c])
+        for c, (x, y, z) in enumerate(coordOnes)
+    ]
+
+    
 
     '''Part 3.2: Step 4'''
 
@@ -498,6 +535,9 @@ def main():
     np.save("DecryptionData/{}.npy".format(fileName), [S1,S2,S3,S4,S5])
     file = open("DecryptionData/{}.txt".format(fileName),"w")
     print("Hash Code: {}".format(hexDigest),file=file)
+    print("Initial keys <x_0, y_0, mu, k>: {}, {}, {}, {}".format(x_0S, y_0S, muS, kS),file=file)
+
+    
     file.close()
     print("Done.")
    

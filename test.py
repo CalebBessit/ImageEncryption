@@ -188,31 +188,62 @@
 #     return values
 
 
+# def brownianMotion2(x_n,y_n,z_n,xStream,yStream):
+#     global n, r
+
+#     xS, yS          = np.array(xStream), np.array(yStream)
+#     r_update        = rho(xS,yS)
+#     theta_1_update  = phi(xS)
+#     theta_2_update  = theta(yS)
+
+#     updateX = x(r_update, theta_1_update, theta_2_update)
+#     updateY = y(r_update, theta_1_update, theta_2_update)
+#     updateZ = z(r_update, theta_1_update)
+#     # for m in range(n):
+#     #     r_update        = rho(xStream[m],yStream[m])
+#     #     theta_1_update  = phi(xStream[m])
+#     #     theta_2_update  = theta(yStream[m])
+
+#     #     x_n = x_n + x(r_update, theta_1_update, theta_2_update)
+#     #     y_n = y_n + y(r_update, theta_1_update, theta_2_update)
+#     #     x_n = z_n + z(r_update, theta_1_update)
+#     x_n = n*x_n + np.sum(updateX)
+#     y_n = n*y_n + np.sum(updateY)
+#     z_n = n*z_n + np.sum(updateZ)
+#     return x_n, y_n, z_n
+
 # def main():
 #     K = 100
 #     x_n, y_n, z_n=  0,0,0
 
 #     x_0, y_0, z_0 = x_n, y_n, z_n
-#     xvals = [0.4841814169096895, 0.9474353332015413, 0.7395971017211852, 0.9999374981720855, 0.22323222277239874, 0.018155628036470417, 0.8324946547379329, 0.651144528442126, 0.7145492592050556, 0.8084115184485581, 0.5760996820607261, 0.832155516497767, 0.5946186560223359, 0.11301439632285426, 0.29618148216900175, 0.9396643501560743, 0.42872606796134183, 0.7766966637646269, 0.16416550923182527, 0.17256919088560962]
-#     yvals = [0.9883516920516855, 0.8389044354779558, 0.6617234191677495, 0.783178935567716, 0.15289969379040858, 0.2170232575381904, 0.24986774533106504, 0.14104828004238834, 0.49778228315163486, 0.6670554231664199, 0.8842208326968592, 0.860766951239447, 0.09926534526862563, 0.4018547632153111, 0.9151952006948302, 0.4537001534105267, 0.901333803354937, 0.8172031373847968, 0.14699566429911393, 0.32546679047428895]
+#     # xvals = [0.4841814169096895, 0.9474353332015413, 0.7395971017211852, 0.9999374981720855, 0.22323222277239874, 0.018155628036470417, 0.8324946547379329, 0.651144528442126, 0.7145492592050556, 0.8084115184485581, 0.5760996820607261, 0.832155516497767, 0.5946186560223359, 0.11301439632285426, 0.29618148216900175, 0.9396643501560743, 0.42872606796134183, 0.7766966637646269, 0.16416550923182527, 0.17256919088560962]
+#     # yvals = [0.9883516920516855, 0.8389044354779558, 0.6617234191677495, 0.783178935567716, 0.15289969379040858, 0.2170232575381904, 0.24986774533106504, 0.14104828004238834, 0.49778228315163486, 0.6670554231664199, 0.8842208326968592, 0.860766951239447, 0.09926534526862563, 0.4018547632153111, 0.9151952006948302, 0.4537001534105267, 0.901333803354937, 0.8172031373847968, 0.14699566429911393, 0.32546679047428895]
+    
+    
 #     global n
-#     # xvals, yvals =[],[]
+#     xvals, yvals =[],[]
 
-#     # for k in range(n):
-#     #     xvals.append(random.random())
-#     #     yvals.append(random.random())
+#     for k in range(n):
+#         xvals.append(random.random())
+#         yvals.append(random.random())
     
 #     values = brownianMotion(x_n, y_n,z_n, xvals, yvals)
+#     finalPoint = brownianMotion2(x_n, y_n,z_n, xvals, yvals)
 #     X, Y, Z = [],[],[]
 #     for v in values:
 #         X.append(v[0])
 #         Y.append(v[1])
 #         Z.append(v[2])
 
+#     # initialPoint=[x_0,y_0,z_0]
+#     # ax.plot3D([initialPoint,finalPoint])
+
 #     fig = plt.figure()
 #     ax = plt.axes(projection='3d')
 #     ax.plot3D(X,Y,Z)
 #     ax.scatter(x_0,y_0,z_0,c="red",label="Starting point")
+#     ax.scatter(*finalPoint, c="orange", label="Apparent final point" )
 #     ax.set_title("20 steps of Brownian Motion")
 #     ax.set_xlabel("x")
 #     ax.set_ylabel("y")
@@ -445,32 +476,32 @@
 # print(result_B)
 
 '''Writing/reading arrays to file test'''
-import numpy as np
+# import numpy as np
 
-# Assuming you have numpy arrays arr1, arr2, arr3
-arr1 = np.array([[1, 2, 3],[4,5,6],[7,8,9]])
-arr2 = np.array([[4, 5,7],[1,2,3],[5,6,7]])
-arr3 = np.array([[8, 9, 10],[11,12,12],[13,12,12]])
+# # Assuming you have numpy arrays arr1, arr2, arr3
+# arr1 = np.array([[1, 2, 3],[4,5,6],[7,8,9]])
+# arr2 = np.array([[4, 5,7],[1,2,3],[5,6,7]])
+# arr3 = np.array([[8, 9, 10],[11,12,12],[13,12,12]])
 
-# Save the arrays to a file
-np.save('test.npy', [arr1, arr2, arr3])
+# # Save the arrays to a file
+# np.save('test.npy', [arr1, arr2, arr3])
 
-import numpy as np
+# import numpy as np
 
-# Load the arrays from the file
-loaded_arrays = np.load('test.npy', allow_pickle=True)
+# # Load the arrays from the file
+# loaded_arrays = np.load('test.npy', allow_pickle=True)
 
-# Retrieve the arrays from the loaded file
-loaded_arr1,loaded_arr2,loaded_arr3 = loaded_arrays
+# # Retrieve the arrays from the loaded file
+# loaded_arr1,loaded_arr2,loaded_arr3 = loaded_arrays
 
-print(loaded_arrays)
-print()
-# Now you can use loaded_arr1, loaded_arr2, loaded_arr3 in your
-print(loaded_arr1)
-print()
-print(loaded_arr2)
-print()
-print(loaded_arr3)
+# print(loaded_arrays)
+# print()
+# # Now you can use loaded_arr1, loaded_arr2, loaded_arr3 in your
+# print(loaded_arr1)
+# print()
+# print(loaded_arr2)
+# print()
+# print(loaded_arr3)
 
 # line = "Hash code: dfd89ba48a86717f3617685a7018a0f6ed98ce84c39a2171c1418fdc90769dff"
 # file = open("test.txt","w")
@@ -482,4 +513,47 @@ print(loaded_arr3)
 # print(line[line.rfind(":")+2:])
 # file.close()
 
+'''Sub array test'''
+# import numpy as np
 
+# # Assuming xStream and yStream are NumPy arrays
+# xStream = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9])
+# yStream = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18])
+
+# n = 3  # Length of subarrays
+
+# # Reshape xStream and yStream into subarrays of length n
+# streamListX = xStream.reshape(-1, n).tolist()
+# streamListY = yStream.reshape(-1, n).tolist()
+
+# print("streamListX:", streamListX)
+# print("streamListY:", streamListY)
+
+
+'''Sum speed test'''
+
+def testFunc(a, b, c, s1, s2):
+    s3, s4 = np.array(s1), np.array(s2)
+    a, b, c = 2*a, 2*b, 2*c
+    a = a + np.sum(s3)
+    b = b + np.sum(s4)
+    c = c +a+b
+    return a,b,c
+
+import numpy as np
+K =10
+coordOnes = []
+for a in range(K):
+    for b in range(K):
+        coordOnes.append( (a+1,b+1,0))
+
+
+k = np.array(coordOnes)
+t1 = np.zeros(10)
+t2 = np.zeros(10)
+
+# j = testFunc(k, t1, t2)
+# print(k)
+
+k = k+1
+print(k)

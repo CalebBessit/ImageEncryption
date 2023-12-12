@@ -6,7 +6,7 @@ import math
 import numpy as np
 
 #INITIAL KEYS
-x_0, y_0, mu, k = 1,1,10,10
+x_0, y_0, mu, k = 1,1,1,1
 gain            = math.pow(10,k)
 n               = 20
 r               = 100
@@ -81,18 +81,29 @@ def y(rho, phi, theta):
 def z(rho, phi):
     return rho*np.cos(phi)
 
+#Implementation of Brownian motion model using chaotic streams.
+#Returns the final position after motion
 def brownianMotion(x_n,y_n,z_n,xStream,yStream):
     global n, r
-    for m in range(n):
-        r_update        = rho(xStream[m],yStream[m])
-        theta_1_update  = phi(xStream[m])
-        theta_2_update  = theta(yStream[m])
 
-        x_n = x_n + x(r_update, theta_1_update, theta_2_update)
-        y_n = y_n + y(r_update, theta_1_update, theta_2_update)
-        x_n = z_n + z(r_update, theta_1_update)
+    xS, yS          = np.array(xStream), np.array(yStream)
+    r_update        = rho(xS,yS)
+    theta_1_update  = phi(xS)
+    theta_2_update  = theta(yS)
 
-    return x_n, y_n, z_n
+    updateX = x(r_update, theta_1_update, theta_2_update)
+    updateY = y(r_update, theta_1_update, theta_2_update)
+    # for m in range(n):
+    #     r_update        = rho(xStream[m],yStream[m])
+    #     theta_1_update  = phi(xStream[m])
+    #     theta_2_update  = theta(yStream[m])
+
+    #     x_n = x_n + x(r_update, theta_1_update, theta_2_update)
+    #     y_n = y_n + y(r_update, theta_1_update, theta_2_update)
+    #     x_n = z_n + z(r_update, theta_1_update)
+    x_n = n*x_n + np.sum(updateX)
+    y_n = n*y_n + np.sum(updateY)
+    return x_n, y_n
 
 def generateChaoticMatrices(x2n, y2n,K):
     a1, a2   = [], []
@@ -240,12 +251,17 @@ def main():
         
         
     #     hexDigest = hashCodes[fileIndex]
-    decData = open("DecryptionData/{}.txt".format(fileName),"r")
-    hexDigest = decData.readline()
-    hexDigest = hexDigest[hexDigest.rfind(":")+2:]
+    decData         = open("DecryptionData/{}.txt".format(fileName),"r")
+    lines           = decData.readlines()
+    hexDigest       = lines[0]
+    hexDigest       = hexDigest[hexDigest.rfind(":")+2:]
+    keyData         = lines[1]
+    keyData         = keyData[keyData.rfind(":")+2:] 
+    x_0, y_0, mu, k = list(map(int, keyData.split(",")))
+
     decData.close()
     
-    
+    print(x_0, y_0, mu, k)
 
     # image = open("TestImages/GreyEncrypted{}30Filled.ppm".format(fileName),"r")
     # image = open("TestImages/GreyEncrypted{}60Filled.ppm".format(fileName),"r")
@@ -404,21 +420,29 @@ def main():
 
     
     print("Implementing Brownian motion...")
-    unnormalizedSeq = []
+   
 
-    for c in range(K*K):
-        #Get initial coordinates of this point
-        x_A, y_A, z_A = coordOnes[c]
+    # for c in range(K*K):
+    #     #Get initial coordinates of this point
+    #     x_A, y_A, z_A = coordOnes[c]
 
-        #Get stream points for this point
-        start= c*n
-        end  = start+n
-        x_AStream = xStream[start:end]
-        y_AStream = yStream[start:end]
+    #     #Get stream points for this point
+    #     start= c*n
+    #     end  = start+n
+    #     x_AStream = xStream[start:end]
+    #     y_AStream = yStream[start:end]
 
-        x_A, y_A, z_A = brownianMotion(x_A,y_A,z_A,x_AStream,y_AStream)
+    #     x_A, y_A, z_A = brownianMotion(x_A,y_A,z_A,x_AStream,y_AStream)
 
-        unnormalizedSeq.append(  (x_A, y_A)  )
+    #     unnormalizedSeq.append(  (x_A, y_A)  )
+    unnormalizedSeq = list(np.zeros(K*K))
+
+    streamListX, streamListY = np.array(xStream).reshape(-1,n).tolist(), np.array(yStream).reshape(-1,n).tolist()
+
+    unnormalizedSeq = [
+        brownianMotion(x, y, z, streamListX[c], streamListY[c])
+        for c, (x, y, z) in enumerate(coordOnes)
+    ]
 
     '''Part 3.2: Step 4'''
 
