@@ -115,8 +115,8 @@ def generateChaoticMatrices(x2n, y2n,K):
          t1 = np.mod( int( (  x2n[a]    + y2n[a]    +1 ) * gain ), 16)
          a1.append( bin(t1 & 0xFF)[2:].zfill(8) )
 
-         t1 = np.mod( int( (  x2n[a]**2 + y2n[a]**2 +1 ) * gain ), 16) 
-         a2.append( bin(t1 & 0xFF)[2:].zfill(8)  )
+         t2 = np.mod( int( (  x2n[a]**2 + y2n[a]**2 +1 ) * gain ), 16) 
+         a2.append( bin(t2 & 0xFF)[2:].zfill(8)  )
 
     # x, y = np.array(x2n), np.array(y2n)
 
@@ -256,7 +256,7 @@ def main():
     
     #Load from file or use new
     if fileName=="NULL":
-        fileNames = ["","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower","Heh"]
+        fileNames = ["Test","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower","Heh"]
         fileName = fileNames[4]
         image = open("TestImages/Grey{}.ppm".format(fileName),"r")
     else:
@@ -425,6 +425,7 @@ def main():
 
     Q_2 = Q_2.tolist()
 
+
     '''Part 3.3: Rubik's cube transformation'''
     #Get the X_{2n} and Y_{2n} subsequences
 
@@ -454,10 +455,13 @@ def main():
     print("Splicing into and scrambling virtual Rubik's cube...")
     S0,S1,S2,S3,S4,S5 = scrambleRubiksCube(S0,S1,S2,S3,S4,S5,S6,S7,S8,S9)
     Q_2 = list(S0.reshape(1,K*K)[0])
+   
     print("Scrambling complete.")
     #Reshape scrambled image
     Q_3Bin = np.array(Q_2).reshape(K,K)
 
+
+    Q_2 = Q_1
     Q_3Hi, Q_3Lo = [],[]
     
     
@@ -493,14 +497,14 @@ def main():
             
             #Lower
             if (o==0 and p==0):
-                Q_3LoPri[o][p] = int(F(o,p)) ^  int (np.mod( np.floor( (1-1.4 * (k_0/15)**2 + (k_1/15)) *precision ) ,16))
-                Q_3HiPri[o][p] = int(G(o,p)) ^ int(np.mod( np.floor(0.3 * (k_0/15) *precision)  ,16))
+                Q_3LoPri[o][p] = int(F(o,p)) ^  int (np.mod( int( (1-1.4 * (k_0/15)**2 + (k_1/15)) *precision ) ,16))
+                Q_3HiPri[o][p] = int(G(o,p)) ^ int(np.mod( int(0.3 * (k_0/15) *precision)  ,16))
             elif (o!=0 and p==0):
-                Q_3LoPri[o][p] = int(F(o,p)) ^ int(np.mod( np.floor( (1-1.4 * (Q_3LoPri[o-1][p-1]/15)**2 + (Q_3HiPri[o][p-1]/15)) *precision ) ,16))
-                Q_3HiPri[o][p] = int(G(o,p)) ^ int(np.mod( np.floor(0.3 * (Q_3LoPri[o-1][K-1]/15) *precision) ,16))
+                Q_3LoPri[o][p] = int(F(o,p)) ^ int(np.mod( int( (1-1.4 * (Q_3LoPri[o-1][K-1]/15)**2 + (Q_3HiPri[o-1][K-1]/15)) *precision ) ,16))
+                Q_3HiPri[o][p] = int(G(o,p)) ^ int(np.mod( int(0.3 * (Q_3LoPri[o-1][K-1]/15) *precision) ,16))
             elif (p!=0):
-                Q_3LoPri[o][p] = int(F(o,p)) ^ int(np.mod( np.floor( (1-1.4 * (Q_3LoPri[o][p-1]/15)**2 + (Q_3HiPri[o][p-1]/15)) *precision ) ,16))
-                Q_3HiPri[o][p] = int(G(o,p)) ^ int(np.mod( np.floor(0.3 * (Q_3LoPri[o][p-1]/15) *precision) ,16))
+                Q_3LoPri[o][p] = int(F(o,p)) ^ int(np.mod( int( (1-1.4 * (Q_3LoPri[o][p-1]/15)**2 + (Q_3HiPri[o][p-1]/15)) *precision ) ,16))
+                Q_3HiPri[o][p] = int(G(o,p)) ^ int(np.mod( int(0.3 * (Q_3LoPri[o][p-1]/15) *precision) ,16))
             
 
 
@@ -513,6 +517,8 @@ def main():
     for q in range(len(Q_3HiPri)):
         value = "0b" + bin(int(Q_3HiPri[q]))[2:].zfill(4) + bin(int(Q_3LoPri[q]))[2:].zfill(4)
         Q_4.append( str(int(value, 2)) +"\n" )
+
+    
 
     print("Diffusion complete.")
     print("Saving encrypted image to file...")

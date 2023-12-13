@@ -1,0 +1,2 @@
+Hash Code: ae2353c222e919c6ab38fd017eeb96b7c85509e8f78d48982060c7aad64c9e32
+Initial keys <x_0, y_0, mu, k>: 1, 1, 8, 8

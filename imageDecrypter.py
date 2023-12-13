@@ -231,7 +231,7 @@ def main():
     print("Loading image data...")
 
     if fileName=="NULL":
-        fileNames = ["","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower","Heh"]
+        fileNames = ["Test","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower","Heh"]
         fileIndex = 4
         fileName = fileNames[fileIndex]
         image = open("TestImages/GreyEncrypted{}.ppm".format(fileName),"r")
@@ -369,11 +369,11 @@ def main():
                 Q_2LoPri[o][p] = int(F(o,p)) ^  int (np.mod( np.floor( (1-1.4 * (k_0/15)**2 + (k_1/15)) *precision ) ,16))
                 Q_2HiPri[o][p] = int(G(o,p)) ^ int(np.mod( np.floor(0.3 * (k_0/15) *precision)  ,16))
             elif (o!=0 and p==0):
-                Q_2LoPri[o][p] = int(F(o,p)) ^ int(np.mod( np.floor( (1-1.4 * (Q_2LoPri[o-1][p-1]/15)**2 + (Q_2HiPri[o][p-1]/15)) *precision ) ,16))
-                Q_2HiPri[o][p] = int(G(o,p)) ^ int(np.mod( np.floor(0.3 * (Q_2LoPri[o-1][K-1]/15) *precision) ,16))
+                Q_2LoPri[o][p] = int(F(o,p)) ^ int(np.mod( np.floor( (1-1.4 * (int("0b"+Q_2Lo[o-1][K-1],2)/15)**2 + (int("0b"+Q_2Hi[o-1][K-1],2)/15)) *precision ) ,16))
+                Q_2HiPri[o][p] = int(G(o,p)) ^ int(np.mod( np.floor(0.3 * (int("0b"+Q_2Lo[o-1][K-1],2)/15) *precision) ,16))
             elif (p!=0):
-                Q_2LoPri[o][p] = int(F(o,p)) ^ int(np.mod( np.floor( (1-1.4 * (Q_2LoPri[o][p-1]/15)**2 + (Q_2HiPri[o][p-1]/15)) *precision ) ,16))
-                Q_2HiPri[o][p] = int(G(o,p)) ^ int(np.mod( np.floor(0.3 * (Q_2LoPri[o][p-1]/15) *precision) ,16))
+                Q_2LoPri[o][p] = int(F(o,p)) ^ int(np.mod( np.floor( (1-1.4 * (int("0b"+Q_2Lo[o][p-1],2)/15)**2 + (int("0b"+Q_2Hi[o][p-1],2)/15)) *precision ) ,16))
+                Q_2HiPri[o][p] = int(G(o,p)) ^ int(np.mod( np.floor(0.3 * (int("0b"+Q_2Lo[o][p-1],2)/15) *precision) ,16))
             
            
                 
@@ -389,102 +389,109 @@ def main():
         value = "0b" + bin(int(Q_2HiPri[q]))[2:].zfill(4) + bin(int(Q_2LoPri[q]))[2:].zfill(4)
         Q_2.append(int(value,2))
 
-    ''' Part 3.2: Step 2'''
-    #Reshape array into 2D array for coordinates
-    print("Retrieving decryption arrays from file...")
-    loadedArray = np.load("DecryptionData/{}.npy".format(fileName),allow_pickle=True)
-    S1, S2, S3, S4, S5 = loadedArray
-    print("Splicing into and unscrambling virtual Rubik's cube...")
+    # Q_2 = Q_1
 
-    xSub, ySub = x_2n[0:1000], y_2n[0:1000]
+    # ''' Part 3.2: Step 2'''
+    # #Reshape array into 2D array for coordinates
+    # print("Retrieving decryption arrays from file...")
+    # loadedArray = np.load("DecryptionData/{}.npy".format(fileName),allow_pickle=True)
+    # S1, S2, S3, S4, S5 = loadedArray
+    # print("Splicing into and unscrambling virtual Rubik's cube...")
 
-    S6 = binaryMask(xSub)   #0=Row rotation, 1=column rotation
-    S7 = binaryMask(ySub)   #0=left/up, 1=right/down
+    # xSub, ySub = x_2n[0:1000], y_2n[0:1000]
 
-    S8 = generateTernaryChaoticMatrices(xSub,K)
-    S9 = generateTernaryChaoticMatrices(ySub,4)
+    # S6 = binaryMask(xSub)   #0=Row rotation, 1=column rotation
+    # S7 = binaryMask(ySub)   #0=left/up, 1=right/down
 
-    #Reverse to undo
-    S6, S7, S8, S9 = list(reversed(S6)), list(reversed(S7)), list(reversed(S8)), list(reversed(S9))
+    # S8 = generateTernaryChaoticMatrices(xSub,K)
+    # S9 = generateTernaryChaoticMatrices(ySub,4)
 
-    S0 = np.array(Q_2).reshape((K,K))
+    # #Reverse to undo
+    # S6, S7, S8, S9 = list(reversed(S6)), list(reversed(S7)), list(reversed(S8)), list(reversed(S9))
 
-    S0,S1,S2,S3,S4,S5 = scrambleRubiksCube(S0,S1,S2,S3,S4,S5,S6,S7,S8,S9)
-    Q_2 = list(S0.reshape(1,K*K)[0])
+    # S7 = [l^1 for l in S7]
 
-    print("Done with Rubik's cube transformation.")
-    coordOnes = []
-    for a in range(K):
-        for b in range(K):
-            coordOnes.append( (a+1,b+1,0))
+    # S0 = np.array(Q_2).reshape((K,K))
+
+    # S0,S1,S2,S3,S4,S5 = scrambleRubiksCube(S0,S1,S2,S3,S4,S5,S6,S7,S8,S9)
+    # Q_2 = list(S0.reshape(1,K*K)[0])
+
+    # print("Done with Rubik's cube transformation.")
+    # coordOnes = []
+    # for a in range(K):
+    #     for b in range(K):
+    #         coordOnes.append( (a+1,b+1,0))
 
     
-    print("Implementing Brownian motion...")
+    # print("Implementing Brownian motion...")
    
 
-    # for c in range(K*K):
-    #     #Get initial coordinates of this point
-    #     x_A, y_A, z_A = coordOnes[c]
+    # # for c in range(K*K):
+    # #     #Get initial coordinates of this point
+    # #     x_A, y_A, z_A = coordOnes[c]
 
-    #     #Get stream points for this point
-    #     start= c*n
-    #     end  = start+n
-    #     x_AStream = xStream[start:end]
-    #     y_AStream = yStream[start:end]
+    # #     #Get stream points for this point
+    # #     start= c*n
+    # #     end  = start+n
+    # #     x_AStream = xStream[start:end]
+    # #     y_AStream = yStream[start:end]
 
-    #     x_A, y_A, z_A = brownianMotion(x_A,y_A,z_A,x_AStream,y_AStream)
+    # #     x_A, y_A, z_A = brownianMotion(x_A,y_A,z_A,x_AStream,y_AStream)
 
-    #     unnormalizedSeq.append(  (x_A, y_A)  )
-    unnormalizedSeq = list(np.zeros(K*K))
+    # #     unnormalizedSeq.append(  (x_A, y_A)  )
+    # unnormalizedSeq = list(np.zeros(K*K))
 
-    streamListX, streamListY = np.array(xStream).reshape(-1,n).tolist(), np.array(yStream).reshape(-1,n).tolist()
+    # streamListX, streamListY = np.array(xStream).reshape(-1,n).tolist(), np.array(yStream).reshape(-1,n).tolist()
 
-    unnormalizedSeq = [
-        brownianMotion(x, y, z, streamListX[c], streamListY[c])
-        for c, (x, y, z) in enumerate(coordOnes)
-    ]
+    # unnormalizedSeq = [
+    #     brownianMotion(x, y, z, streamListX[c], streamListY[c])
+    #     for c, (x, y, z) in enumerate(coordOnes)
+    # ]
 
-    '''Part 3.2: Step 4'''
+    # '''Part 3.2: Step 4'''
 
-    print("Normalizing data...")
-    minX = min(item[0] for item in unnormalizedSeq)
-    maxX = max(item[0] for item in unnormalizedSeq)
+    # print("Normalizing data...")
+    # minX = min(item[0] for item in unnormalizedSeq)
+    # maxX = max(item[0] for item in unnormalizedSeq)
 
-    minY = min(item[1] for item in unnormalizedSeq)
-    maxY = max(item[1] for item in unnormalizedSeq)
-    #Begin normalizing values
-    xNorm, yNorm = [],[]
+    # minY = min(item[1] for item in unnormalizedSeq)
+    # maxY = max(item[1] for item in unnormalizedSeq)
+    # #Begin normalizing values
+    # xNorm, yNorm = [],[]
 
-    for m in unnormalizedSeq:
-        xNorm.append(   (  (m[0]-minX) * (K)    )  /  (maxX-minX)     )
-        yNorm.append(   (  (m[1]-minY) * (K)    )  /  (maxY-minY)     )
+    # for m in unnormalizedSeq:
+    #     xNorm.append(   (  (m[0]-minX) * (K)    )  /  (maxX-minX)     )
+    #     yNorm.append(   (  (m[1]-minY) * (K)    )  /  (maxY-minY)     )
 
-    print("Generating ranking array...")
-    tempX           = np.array(xNorm).argsort()
-    L_primeX        = np.empty_like(tempX)
-    L_primeX[tempX] = np.arange(K*K)
+    # print("Generating ranking array...")
+    # tempX           = np.array(xNorm).argsort()
+    # L_primeX        = np.empty_like(tempX)
+    # L_primeX[tempX] = np.arange(K*K)
 
-    print("Reversing ranking map...")
+    # print("Reversing ranking map...")
 
-    p        = np.asanyarray(L_primeX)
-    s        = np.empty_like(p)
-    s[p]     = np.arange(p.size)
-    L_primeX = s
+    # p        = np.asanyarray(L_primeX)
+    # s        = np.empty_like(p)
+    # s[p]     = np.arange(p.size)
+    # L_primeX = s
 
-    print("Unscrambling image Q2 -> Q1...")
-    tempArr = np.array(Q_2)
-    sortedIndices = np.argsort(L_primeX)
-    Q_0 = tempArr[sortedIndices]
+    # print("Unscrambling image Q2 -> Q1...")
+    # tempArr = np.array(Q_2)
+    # sortedIndices = np.argsort(L_primeX)
+    # Q_0 = tempArr[sortedIndices]
 
-    Q_0 = Q_0.tolist()
+    # Q_0 = Q_0.tolist()
 
     print("Saving decrypted image to file...")
 
     fileHeader = "P2\n# Decrypted Image\n{} {}\n255\n".format(K,K)
     
-    for f in range(len(Q_0)):
-        Q_0[f] = str(Q_0[f]) + "\n"
+    Q_0=[]
+    for f in Q_2:
+        Q_0.append(str(int(f))+"\n")
 
+
+  
     fileContent = "".join(Q_0)
     fileContent = fileHeader + fileContent
 
