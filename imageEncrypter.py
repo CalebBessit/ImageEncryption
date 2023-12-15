@@ -423,6 +423,7 @@ def main():
 
     R2, G2, B2 = list(sR.reshape(1,K*K)[0]), list(sG.reshape(1,K*K)[0]), list(sB.reshape(1,K*K)[0])
    
+   
     print("Scrambling complete.")
     #Arrays for binary values
     Q_3Hi, Q_3Lo = [],[]
