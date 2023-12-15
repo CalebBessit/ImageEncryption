@@ -415,6 +415,7 @@ def main():
     S0,S1,S2,S3,S4,S5 = scrambleRubiksCube(S0,S1,S2,S3,S4,S5,S6,S7,S8,S9)
     Q_2 = list(S0.reshape(1,K*K)[0])
    
+   
     print("Scrambling complete.")
     #Arrays for binary values
     Q_3Hi, Q_3Lo = [],[]
