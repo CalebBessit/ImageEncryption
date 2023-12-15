@@ -91,14 +91,7 @@ def brownianMotion(x_n,y_n,z_n,xStream,yStream):
 
     updateX = x(r_update, theta_1_update, theta_2_update)
     updateY = y(r_update, theta_1_update, theta_2_update)
-    # for m in range(n):
-    #     r_update        = rho(xStream[m],yStream[m])
-    #     theta_1_update  = phi(xStream[m])
-    #     theta_2_update  = theta(yStream[m])
-
-    #     x_n = x_n + x(r_update, theta_1_update, theta_2_update)
-    #     y_n = y_n + y(r_update, theta_1_update, theta_2_update)
-    #     x_n = z_n + z(r_update, theta_1_update)
+   
     x_n = n*x_n + np.sum(updateX)
     y_n = n*y_n + np.sum(updateY)
     return x_n, y_n
@@ -257,7 +250,7 @@ def main():
     #Load from file or use new
     if fileName=="NULL":
         fileNames = ["Test","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower","Heh"]
-        fileName = fileNames[4]
+        fileName = fileNames[8]
         image = open("TestImages/Grey{}.ppm".format(fileName),"r")
     else:
         image = open(fileName, "r")
@@ -303,9 +296,7 @@ def main():
             runningH /= 15
             epsilonValues.append(runningH)
 
-    # print(epsilonValues)
-
-    #Calculate eta and 
+    #Calculate eta and other initial keys
     eta = (x_0/y_0) * (mu/k)
 
     x_0P = (epsilonValues[0]+eta)/(x_0+eta)
@@ -326,26 +317,17 @@ def main():
     Q_1 = []
     for i in range(4,len(lines)):
         line = lines[i].replace("\n","")
-        # if line.isnumeric()==False:
-        #     print(i, line)
         Q_1.append(  int( line) )
 
-    # print("Len before: ",len(Q_1))
     if low!=hi:
         extension = (hi*hi)-len(Q_1)
         for i in range(extension):
             Q_1.append(0)
 
-    # print(low, hi)
-    # print("Len after: ",len(Q_1))
-
 
     ''' Part 3.2: Step 2'''
     #Reshape array into 2D array for coordinates
     K = hi
-    gridQ1 = np.array(Q_1).reshape(K,K)
-    # print(gridQ1)
-
     coordOnes = []
     for a in range(K):
         for b in range(K):
@@ -359,32 +341,9 @@ def main():
     xStream, yStream = generateCleanSequence(K*K*n+1000, x_0, y_0)
     print("Implementing parallelized Brownian motion...")
     
-    # numProcesses    = multiprocessing.cpu_count()
-    # pool            = multiprocessing.Pool(processes=numProcesses)
     unnormalizedSeq = list(np.zeros(K*K))
 
-    # pool.starmap(processData, [(coordOnes, xStream, yStream, n, c, unnormalizedSeq) for c in range(K * K)])
-
-    # # Close the pool of processes
-    # pool.close()
-    # pool.join()
-
     streamListX, streamListY = np.array(xStream).reshape(-1,n).tolist(), np.array(yStream).reshape(-1,n).tolist()
-
-    # for c in range(K*K):
-    #     #Get initial coordinates of this point
-    #     x_A, y_A, z_A = coordOnes[c]
-
-    #     #Get stream points for this point
-        
-    #     x_A, y_A = brownianMotion(x_A,y_A,z_A,streamListX[c],streamListY[c])
-
-    #     unnormalizedSeq[c] = (x_A, y_A) 
-
-    # Using list comprehension to perform the operations
-    # Assuming streamListX and streamListY are already generated using NumPy's reshape method
-# Also assuming K and unnormalizedSeq are defined
-
     unnormalizedSeq = [
         brownianMotion(x, y, z, streamListX[c], streamListY[c])
         for c, (x, y, z) in enumerate(coordOnes)
@@ -457,16 +416,12 @@ def main():
     Q_2 = list(S0.reshape(1,K*K)[0])
    
     print("Scrambling complete.")
-    #Reshape scrambled image
-    Q_3Bin = np.array(Q_2).reshape(K,K)
-
-
-    Q_2 = Q_1
+    #Arrays for binary values
     Q_3Hi, Q_3Lo = [],[]
     
     
-#Iterate over Q2 and convert to binary, split into upper and lower bits,
-#store upper and lower halves respectively
+    #Iterate over Q2 and convert to binary, split into upper and lower bits,
+    #store upper and lower halves respectively
     print("Splitting binary values...")
     for g in Q_2:
         binVal = bin(g & 0xFF)[2:].zfill(8) #Convert to binary
@@ -523,6 +478,7 @@ def main():
     print("Diffusion complete.")
     print("Saving encrypted image to file...")
 
+    #Save all relevant data to file
     fileHeader = "P2\n# Encrypted Image\n{} {}\n255\n".format(K,K)
 
     fileContent = "".join(Q_4)
