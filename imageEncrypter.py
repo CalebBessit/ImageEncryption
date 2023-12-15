@@ -251,7 +251,7 @@ def main():
     if fileName=="NULL":
         fileNames = ["Test","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower","Heh"]
         fileName = fileNames[8]
-        image = open("TestImages/{}.ppm".format(fileName),"r")
+        image = open("TestImages/Grey{}.ppm".format(fileName),"r")
     else:
         image = open(fileName, "r")
         useDefault = False
@@ -319,14 +319,10 @@ def main():
         line = lines[i].replace("\n","")
         Q_1.append(  int( line) )
 
-    R1, G1, B1 = Q_1[::3],Q_1[1::3],Q_1[2::3]
-
     if low!=hi:
-        extension = (hi*hi)-len(R1)
+        extension = (hi*hi)-len(Q_1)
         for i in range(extension):
-            R1.append(0)
-            G1.append(0)
-            B1.append(0)
+            Q_1.append(0)
 
 
     ''' Part 3.2: Step 2'''
@@ -382,11 +378,12 @@ def main():
     print("Generating scrambled image Q2...")
 
 
-    tR, tG, tB = np.array(R1), np.array(G1), np.array(B1)
+    tempArr = np.array(Q_1)
     sortedIndices = np.argsort(L_primeX)
-    R2, G2, B2 = tR[sortedIndices],tG[sortedIndices],tB[sortedIndices]
+    Q_2 = tempArr[sortedIndices]
 
-    R2, G2, B2 = R2.tolist(), G2.tolist(), B2.tolist()
+    Q_2 = Q_2.tolist()
+
 
     '''Part 3.3: Rubik's cube transformation'''
     #Get the X_{2n} and Y_{2n} subsequences
@@ -412,68 +409,37 @@ def main():
     S8 = generateTernaryChaoticMatrices(xSub,K)
     S9 = generateTernaryChaoticMatrices(ySub,4)
 
+    S0 = np.array(Q_2).reshape((K,K))
 
-    sR, sG, sB = np.array(R2).reshape((K,K)), np.array(G2).reshape((K,K)), np.array(B2).reshape((K,K))
     print("Splicing into and scrambling virtual Rubik's cube...")
-
-
-    sR,sr1,sr2,sr3,sr4,sr5 = scrambleRubiksCube(sR,S1,S2,S3,S4,S5,S6,S7,S8,S9)
-    sG,sg1,sg2,sg3,sg4,sg5 = scrambleRubiksCube(sG,S1,S2,S3,S4,S5,S6,S7,S8,S9)
-    sB,sb1,sb2,sb3,sb4,sb5 = scrambleRubiksCube(sB,S1,S2,S3,S4,S5,S6,S7,S8,S9)
-
-    R2, G2, B2 = list(sR.reshape(1,K*K)[0]), list(sG.reshape(1,K*K)[0]), list(sB.reshape(1,K*K)[0])
+    S0,S1,S2,S3,S4,S5 = scrambleRubiksCube(S0,S1,S2,S3,S4,S5,S6,S7,S8,S9)
+    Q_2 = list(S0.reshape(1,K*K)[0])
    
    
     print("Scrambling complete.")
     #Arrays for binary values
     Q_3Hi, Q_3Lo = [],[]
     
-    R3Hi, R3Lo, G3Hi, G3Lo, B3Hi, B3Lo = [],[], [],[], [],[]
     
     #Iterate over Q2 and convert to binary, split into upper and lower bits,
     #store upper and lower halves respectively
     print("Splitting binary values...")
-    for i in range(len(R2)):
-        binVal = bin(R2[i] & 0xFF)[2:].zfill(8) #Convert to binary
-        R3Hi.append(binVal[0:4])
-        R3Lo.append(binVal[4:])
-
-        binVal = bin(G2[i] & 0xFF)[2:].zfill(8) #Convert to binary
-        G3Hi.append(binVal[0:4])
-        G3Lo.append(binVal[4:])
+    for g in Q_2:
+        binVal = bin(g & 0xFF)[2:].zfill(8) #Convert to binary
+        Q_3Hi.append(binVal[0:4])
+        Q_3Lo.append(binVal[4:])
 
 
-        binVal = bin(B2[i] & 0xFF)[2:].zfill(8) #Convert to binary
-        B3Hi.append(binVal[0:4])
-        B3Lo.append(binVal[4:])
+    Q_3Hi, Q_3Lo = np.array(Q_3Hi).reshape(K,K),np.array(Q_3Lo).reshape(K,K)
 
-
-
-    R3Hi, R3Lo = np.array(R3Hi).reshape(K,K),np.array(R3Lo).reshape(K,K)
-    G3Hi, G3Lo = np.array(G3Hi).reshape(K,K),np.array(G3Lo).reshape(K,K)
-    B3Hi, B3Lo = np.array(B3Hi).reshape(K,K),np.array(B3Lo).reshape(K,K)
 
     #Define f(i,j) and g(i,j)
 
-    def Fr(i,j):
-        return int("0b"+R3Lo[i][j],2) ^ int("0b"+A1[i][j],2) ^ int("0b"+A2[K-1-i][K-1-j],2)
+    def F(i,j):
+        return int("0b"+Q_3Lo[i][j],2) ^ int("0b"+A1[i][j],2) ^ int("0b"+A2[K-1-i][K-1-j],2)
 
-    def Gr(i,j):
-        return int("0b"+R3Hi[i][j],2) ^ int("0b"+A1[K-1-i][K-1-j],2) ^ int("0b"+A2[i][j],2)
-
-
-    def Fg(i,j):
-        return int("0b"+G3Lo[i][j],2) ^ int("0b"+A1[i][j],2) ^ int("0b"+A2[K-1-i][K-1-j],2)
-
-    def Gg(i,j):
-        return int("0b"+G3Hi[i][j],2) ^ int("0b"+A1[K-1-i][K-1-j],2) ^ int("0b"+A2[i][j],2)
-
-
-    def Fb(i,j):
-        return int("0b"+B3Lo[i][j],2) ^ int("0b"+A1[i][j],2) ^ int("0b"+A2[K-1-i][K-1-j],2)
-
-    def Gb(i,j):
-        return int("0b"+B3Hi[i][j],2) ^ int("0b"+A1[K-1-i][K-1-j],2) ^ int("0b"+A2[i][j],2)
+    def G(i,j):
+        return int("0b"+Q_3Hi[i][j],2) ^ int("0b"+A1[K-1-i][K-1-j],2) ^ int("0b"+A2[i][j],2)
 
 
     #Iterate and find Q3H' and Q3L' by diffusing using Henon map
@@ -481,40 +447,20 @@ def main():
     k_0, k_1  = 1, 1
 
     print("Starting diffusion...")
-    R3HiPri, R3LoPri = np.zeros(K*K).reshape(K,K),np.zeros(K*K).reshape(K,K)
-    G3HiPri, G3LoPri = np.zeros(K*K).reshape(K,K),np.zeros(K*K).reshape(K,K)
-    B3HiPri, B3LoPri = np.zeros(K*K).reshape(K,K),np.zeros(K*K).reshape(K,K)
+    Q_3HiPri, Q_3LoPri = np.zeros(K*K).reshape(K,K),np.zeros(K*K).reshape(K,K)
     for o in range(K):
         for p in range(K):
             
             #Lower
             if (o==0 and p==0):
-                R3LoPri[o][p] = int(Fr(o,p)) ^  int (np.mod( int( (1-1.4 * (k_0/15)**2 + (k_1/15)) *precision ) ,16))
-                R3HiPri[o][p] = int(Gr(o,p)) ^ int(np.mod( int(0.3 * (k_0/15) *precision)  ,16))
-
-                G3LoPri[o][p] = int(Fg(o,p)) ^  int (np.mod( int( (1-1.4 * (k_0/15)**2 + (k_1/15)) *precision ) ,16))
-                G3HiPri[o][p] = int(Gg(o,p)) ^ int(np.mod( int(0.3 * (k_0/15) *precision)  ,16))
-
-                B3LoPri[o][p] = int(Fb(o,p)) ^  int (np.mod( int( (1-1.4 * (k_0/15)**2 + (k_1/15)) *precision ) ,16))
-                B3HiPri[o][p] = int(Gb(o,p)) ^ int(np.mod( int(0.3 * (k_0/15) *precision)  ,16))
+                Q_3LoPri[o][p] = int(F(o,p)) ^  int (np.mod( int( (1-1.4 * (k_0/15)**2 + (k_1/15)) *precision ) ,16))
+                Q_3HiPri[o][p] = int(G(o,p)) ^ int(np.mod( int(0.3 * (k_0/15) *precision)  ,16))
             elif (o!=0 and p==0):
-                R3LoPri[o][p] = int(Fr(o,p)) ^ int(np.mod( int( (1-1.4 * (R3LoPri[o-1][K-1]/15)**2 + (R3HiPri[o-1][K-1]/15)) *precision ) ,16))
-                R3HiPri[o][p] = int(Gr(o,p)) ^ int(np.mod( int(0.3 * (R3LoPri[o-1][K-1]/15) *precision) ,16))
-
-                G3LoPri[o][p] = int(Fg(o,p)) ^ int(np.mod( int( (1-1.4 * (G3LoPri[o-1][K-1]/15)**2 + (G3HiPri[o-1][K-1]/15)) *precision ) ,16))
-                G3HiPri[o][p] = int(Gg(o,p)) ^ int(np.mod( int(0.3 * (G3LoPri[o-1][K-1]/15) *precision) ,16))
-
-                B3LoPri[o][p] = int(Fb(o,p)) ^ int(np.mod( int( (1-1.4 * (B3LoPri[o-1][K-1]/15)**2 + (B3HiPri[o-1][K-1]/15)) *precision ) ,16))
-                B3HiPri[o][p] = int(Gb(o,p)) ^ int(np.mod( int(0.3 * (B3LoPri[o-1][K-1]/15) *precision) ,16))
+                Q_3LoPri[o][p] = int(F(o,p)) ^ int(np.mod( int( (1-1.4 * (Q_3LoPri[o-1][K-1]/15)**2 + (Q_3HiPri[o-1][K-1]/15)) *precision ) ,16))
+                Q_3HiPri[o][p] = int(G(o,p)) ^ int(np.mod( int(0.3 * (Q_3LoPri[o-1][K-1]/15) *precision) ,16))
             elif (p!=0):
-                R3LoPri[o][p] = int(Fr(o,p)) ^ int(np.mod( int( (1-1.4 * (R3LoPri[o][p-1]/15)**2 + (R3HiPri[o][p-1]/15)) *precision ) ,16))
-                R3HiPri[o][p] = int(Gr(o,p)) ^ int(np.mod( int(0.3 * (R3LoPri[o][p-1]/15) *precision) ,16))
-
-                G3LoPri[o][p] = int(Fg(o,p)) ^ int(np.mod( int( (1-1.4 * (G3LoPri[o][p-1]/15)**2 + (G3HiPri[o][p-1]/15)) *precision ) ,16))
-                G3HiPri[o][p] = int(Gg(o,p)) ^ int(np.mod( int(0.3 * (G3LoPri[o][p-1]/15) *precision) ,16))
-
-                B3LoPri[o][p] = int(Fb(o,p)) ^ int(np.mod( int( (1-1.4 * (B3LoPri[o][p-1]/15)**2 + (B3HiPri[o][p-1]/15)) *precision ) ,16))
-                B3HiPri[o][p] = int(Gb(o,p)) ^ int(np.mod( int(0.3 * (B3LoPri[o][p-1]/15) *precision) ,16))
+                Q_3LoPri[o][p] = int(F(o,p)) ^ int(np.mod( int( (1-1.4 * (Q_3LoPri[o][p-1]/15)**2 + (Q_3HiPri[o][p-1]/15)) *precision ) ,16))
+                Q_3HiPri[o][p] = int(G(o,p)) ^ int(np.mod( int(0.3 * (Q_3LoPri[o][p-1]/15) *precision) ,16))
             
 
 
@@ -522,48 +468,35 @@ def main():
     Q_3HiPri = Q_3HiPri.reshape(1,K*K)[0].tolist()
     Q_3LoPri = Q_3LoPri.reshape(1,K*K)[0].tolist()
 
-    R3HiPri = R3HiPri.reshape(1,K*K)[0].tolist()
-    R3LoPri = R3LoPri.reshape(1,K*K)[0].tolist()
-
-    G3HiPri = G3HiPri.reshape(1,K*K)[0].tolist()
-    G3LoPri = G3LoPri.reshape(1,K*K)[0].tolist()
-
-    B3HiPri = B3HiPri.reshape(1,K*K)[0].tolist()
-    B3LoPri = B3LoPri.reshape(1,K*K)[0].tolist()
-
     Q_4 = []
 
-    for q in range(len(R3HiPri)):
-        value1 = "0b" + bin(int(R3HiPri[q]))[2:].zfill(4) + bin(int(R3LoPri[q]))[2:].zfill(4)
-        value2 = "0b" + bin(int(G3HiPri[q]))[2:].zfill(4) + bin(int(G3LoPri[q]))[2:].zfill(4)
-        value3 = "0b" + bin(int(B3HiPri[q]))[2:].zfill(4) + bin(int(B3LoPri[q]))[2:].zfill(4)
+    for q in range(len(Q_3HiPri)):
+        value = "0b" + bin(int(Q_3HiPri[q]))[2:].zfill(4) + bin(int(Q_3LoPri[q]))[2:].zfill(4)
+        Q_4.append( str(int(value, 2)) +"\n" )
 
-        Q_4.append( str(int(value1, 2)) +"\n" )
-        Q_4.append( str(int(value2, 2)) +"\n" )
-        Q_4.append( str(int(value3, 2)) +"\n" )
-            
+    
 
     print("Diffusion complete.")
     print("Saving encrypted image to file...")
 
     #Save all relevant data to file
-    fileHeader = "P3\n# Encrypted Color Image\n{} {}\n255\n".format(K,K)
+    fileHeader = "P2\n# Encrypted Image\n{} {}\n255\n".format(K,K)
 
     fileContent = "".join(Q_4)
     fileContent = fileHeader + fileContent
 
     if useDefault:
-        scrambledImage = open("TestImages/ColorEncrypted{}.ppm".format(fileName),"w")
+        scrambledImage = open("TestImages/GreyEncrypted{}.ppm".format(fileName),"w")
     else:
-        scrambledImage = open("ColorEncrypted{}.ppm".format(fileName),"w")
+        scrambledImage = open("GreyEncrypted{}.ppm".format(fileName),"w")
 
     scrambledImage.write(fileContent)
     scrambledImage.close()
 
     print("Saving decryption data to file...")
 
-    np.save("DecryptionData/Color{}.npy".format(fileName), [[sr1,sr2,sr3,sr4,sr5],[sg1,sg2,sg3,sg4,sg5],[sb1,sb2,sb3,sb4,sb5]])
-    file = open("DecryptionData/Color{}.txt".format(fileName),"w")
+    np.save("DecryptionData/{}.npy".format(fileName), [S1,S2,S3,S4,S5])
+    file = open("DecryptionData/{}.txt".format(fileName),"w")
     print("Hash Code: {}".format(hexDigest),file=file)
     print("Initial keys <x_0, y_0, mu, k>: {}, {}, {}, {}".format(x_0S, y_0S, muS, kS),file=file)
 
