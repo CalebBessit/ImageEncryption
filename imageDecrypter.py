@@ -3,6 +3,7 @@
 #08 October 2023
 
 import math
+import time
 import numpy as np
 
 #INITIAL KEYS
@@ -17,16 +18,17 @@ useDefault      = True
 def f(x, y):
     global mu, gain
     
-    a_star = np.cos( beta(y)*np.arccos(x) )
-    b_star = np.cos( beta(x)*np.arccos(y) )
-    return a_star*gain - np.floor(a_star*gain),  b_star*gain - np.floor(b_star*gain)
+    a_star = math.cos( beta(y)*math.acos(x) )
+    b_star = math.cos( beta(x)*math.acos(y) )
+    return a_star*gain - math.floor(a_star*gain),  b_star*gain - math.floor(b_star*gain)
 
 #Defines variable parameter for Chebyshev input
 def beta(i):
     global mu
-    return np.exp(mu*i*(1-i))
+    return math.exp(mu*i*(1-i))
 
 
+#Generates iteration number of terms of the 2D-LCCM map
 def generateCleanSequence(iterations, x_0, y_0):
     x, y = x_0, y_0
 
@@ -34,30 +36,11 @@ def generateCleanSequence(iterations, x_0, y_0):
         x, y = f(x,y)
 
     iterations -=1000
-    xvals, yvals = [], []
+    xvals, yvals = np.empty(iterations), np.empty(iterations)
     for j in range(iterations):
         x, y = f(x,y)
-        xvals.append(x)
-        yvals.append(y)
-
+        xvals[j], yvals[j] = x, y
     return xvals, yvals
-
-def getSubsequence(xsequence, ysequence, k):
-    global n
-
-    xseq, yseq =[],[]
-    for l in range(k,k+n):
-        xseq.append(xsequence[l])
-        yseq.append(ysequence[l])
-
-    return xseq, yseq
-    # step = K*K
-
-    # newSequence = []
-    # for l in range(0,step*n, step):
-    #     newSequence.append(sequence[l])
-
-    # return newSequence
 
 def rho(x_n,y_n):
     return np.mod(  np.floor(  (x_n+y_n)*math.pow(10,8)) ,r+1   )   
@@ -93,33 +76,32 @@ def brownianMotion(x_n,y_n,z_n,xStream,yStream):
 
     updateX = x(r_update, theta_1_update, theta_2_update)
     updateY = y(r_update, theta_1_update, theta_2_update)
-    # for m in range(n):
-    #     r_update        = rho(xStream[m],yStream[m])
-    #     theta_1_update  = phi(xStream[m])
-    #     theta_2_update  = theta(yStream[m])
-
-    #     x_n = x_n + x(r_update, theta_1_update, theta_2_update)
-    #     y_n = y_n + y(r_update, theta_1_update, theta_2_update)
-    #     x_n = z_n + z(r_update, theta_1_update)
-    x_n = n*x_n + np.sum(updateX)
-    y_n = n*y_n + np.sum(updateY)
+    x_n = n*x_n + math.fsum(updateX)
+    y_n = n*y_n + math.fsum(updateY)
     return x_n, y_n
 
+def eightBitStringify(x):
+    return bin(x & 0xFF)[2:].zfill(8)
+
 def generateChaoticMatrices(x2n, y2n,K):
-    a1, a2   = [], []
     gain = math.pow(10,8)
-    for a in range(K*K):
-         #Calculate the values for the chaotic matrices and convert them to 8-bit binary values
-         t1 = np.mod( int( (  x2n[a]    + y2n[a]    +1 ) * gain ), 16)
-         a1.append( bin(t1 & 0xFF)[2:].zfill(8) )
+    
+    x, y = np.array(x2n), np.array(y2n)
 
-         t1 = np.mod( int( (  x2n[a]**2 + y2n[a]**2 +1 ) * gain ), 16) 
-         a2.append( bin(t1 & 0xFF)[2:].zfill(8)  )
+    x, y = (x+y+1)*gain, (x**2+y**2+1)*gain
 
-    a1 = np.array(a1).reshape(K,K)
-    a2 = np.array(a2).reshape(K,K)
+    x, y = x.astype(int), y.astype(int)
 
-    return a1, a2
+    x, y = list(np.mod(x, 16)), list(np.mod(y, 16))
+
+    x = [eightBitStringify(a) for a in x]
+    y = [eightBitStringify(b) for b in y]
+
+
+    x = np.array(x).reshape(K,K)
+    y = np.array(y).reshape(K,K)
+
+    return x,y
 
 #Generates a chaotic matrix based on the rule x2n^(p1)-y2n^(p2)+1
 def generateSecondaryChaoticMatrices(x2n,y2n,p1,p2,K):
@@ -229,10 +211,11 @@ def main():
     #Read image data
 
     print("Loading image data...")
+    pre = time.time_ns()
 
     if fileName=="NULL":
         fileNames = ["Test","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower","Heh"]
-        fileIndex = 8
+        fileIndex = 4
         fileName = fileNames[fileIndex]
         image = open("TestImages/GreyEncrypted{}.ppm".format(fileName),"r")
     else:
@@ -249,9 +232,6 @@ def main():
     decData.close()
     
     lines = image.readlines()
-    dataStream=""
-    for i in range(4,len(lines)):
-        dataStream+= lines[i]
     image.close()
 
     #Generate the three keys
@@ -296,10 +276,9 @@ def main():
     K = hi
     print("Generating full image Q1...")
 
-    Q_1 = []
-    for i in range(4,len(lines)):
-        line = lines[i].replace("\n","")
-        Q_1.append(  int( line) )
+    imageLines = lines[4:]
+    Q_1 = [int(  line.replace("\n","")  )  for line in imageLines]
+
 
     #Generate chaotic stream using chaotic map
     
@@ -345,14 +324,14 @@ def main():
         for p in range(K-1,-1,-1):
             #Lower
             if (o==0 and p==0):
-                Q_2LoPri[o][p] = int(F(o,p)) ^  int (np.mod( np.floor( (1-1.4 * (k_0/15)**2 + (k_1/15)) *precision ) ,16))
-                Q_2HiPri[o][p] = int(G(o,p)) ^ int(np.mod( np.floor(0.3 * (k_0/15) *precision)  ,16))
+                Q_2LoPri[o][p] = int(F(o,p)) ^  int ( math.floor( (1-1.4 * (k_0/15)**2 + (k_1/15)) *precision ) %16)
+                Q_2HiPri[o][p] = int(G(o,p)) ^ int( math.floor(0.3 * (k_0/15) *precision)  %16)
             elif (o!=0 and p==0):
-                Q_2LoPri[o][p] = int(F(o,p)) ^ int(np.mod( np.floor( (1-1.4 * (int("0b"+Q_2Lo[o-1][K-1],2)/15)**2 + (int("0b"+Q_2Hi[o-1][K-1],2)/15)) *precision ) ,16))
-                Q_2HiPri[o][p] = int(G(o,p)) ^ int(np.mod( np.floor(0.3 * (int("0b"+Q_2Lo[o-1][K-1],2)/15) *precision) ,16))
+                Q_2LoPri[o][p] = int(F(o,p)) ^ int( math.floor( (1-1.4 * (int("0b"+Q_2Lo[o-1][K-1],2)/15)**2 + (int("0b"+Q_2Hi[o-1][K-1],2)/15)) *precision ) %16)
+                Q_2HiPri[o][p] = int(G(o,p)) ^ int( math.floor(0.3 * (int("0b"+Q_2Lo[o-1][K-1],2)/15) *precision) %16)
             elif (p!=0):
-                Q_2LoPri[o][p] = int(F(o,p)) ^ int(np.mod( np.floor( (1-1.4 * (int("0b"+Q_2Lo[o][p-1],2)/15)**2 + (int("0b"+Q_2Hi[o][p-1],2)/15)) *precision ) ,16))
-                Q_2HiPri[o][p] = int(G(o,p)) ^ int(np.mod( np.floor(0.3 * (int("0b"+Q_2Lo[o][p-1],2)/15) *precision) ,16))
+                Q_2LoPri[o][p] = int(F(o,p)) ^ int( math.floor( (1-1.4 * (int("0b"+Q_2Lo[o][p-1],2)/15)**2 + (int("0b"+Q_2Hi[o][p-1],2)/15)) *precision ) %16)
+                Q_2HiPri[o][p] = int(G(o,p)) ^ int( math.floor(0.3 * (int("0b"+Q_2Lo[o][p-1],2)/15) *precision) %16)
             
            
                 
@@ -396,28 +375,10 @@ def main():
     Q_2 = list(S0.reshape(1,K*K)[0])
 
     print("Done with Rubik's cube transformation.")
-    coordOnes = []
-    for a in range(K):
-        for b in range(K):
-            coordOnes.append( (a+1,b+1,0))
-
+    coordOnes = [(a + 1, b + 1, 0) for a in range(K) for b in range(K)]
     
     print("Implementing Brownian motion...")
-   
 
-    # for c in range(K*K):
-    #     #Get initial coordinates of this point
-    #     x_A, y_A, z_A = coordOnes[c]
-
-    #     #Get stream points for this point
-    #     start= c*n
-    #     end  = start+n
-    #     x_AStream = xStream[start:end]
-    #     y_AStream = yStream[start:end]
-
-    #     x_A, y_A, z_A = brownianMotion(x_A,y_A,z_A,x_AStream,y_AStream)
-
-    #     unnormalizedSeq.append(  (x_A, y_A)  )
     unnormalizedSeq = list(np.zeros(K*K))
 
     streamListX, streamListY = np.array(xStream).reshape(-1,n).tolist(), np.array(yStream).reshape(-1,n).tolist()
@@ -433,15 +394,8 @@ def main():
     minX = min(item[0] for item in unnormalizedSeq)
     maxX = max(item[0] for item in unnormalizedSeq)
 
-    minY = min(item[1] for item in unnormalizedSeq)
-    maxY = max(item[1] for item in unnormalizedSeq)
-    #Begin normalizing values
-    xNorm, yNorm = [],[]
-
-    for m in unnormalizedSeq:
-        xNorm.append(   (  (m[0]-minX) * (K)    )  /  (maxX-minX)     )
-        yNorm.append(   (  (m[1]-minY) * (K)    )  /  (maxY-minY)     )
-
+    xNorm = [   (  (m[0]-minX) * (K)    )  /  (maxX-minX) for m in unnormalizedSeq  ]
+    
     print("Generating ranking array...")
     tempX           = np.array(xNorm).argsort()
     L_primeX        = np.empty_like(tempX)
@@ -478,6 +432,8 @@ def main():
     decryptedImage.close()
 
     print("Done.")
+    post = time.time_ns()
+    print("Total time to decrypt image: {} seconds".format((post-pre)*math.pow(10,-9)))
 
 if __name__ == "__main__":
     main()

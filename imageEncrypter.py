@@ -3,9 +3,10 @@
 #05 October 2023
 
 import math
+import time
 import hashlib
 import numpy as np
-import multiprocessing
+
 
 
 #INITIAL KEYS
@@ -20,14 +21,14 @@ useDefault          = True
 def f(x, y):
     global mu, gain
     
-    a_star = np.cos( beta(y)*np.arccos(x) )
-    b_star = np.cos( beta(x)*np.arccos(y) )
-    return a_star*gain - np.floor(a_star*gain),  b_star*gain - np.floor(b_star*gain)
+    a_star = math.cos( beta(y)*math.acos(x) )
+    b_star = math.cos( beta(x)*math.acos(y) )
+    return a_star*gain - math.floor(a_star*gain),  b_star*gain - math.floor(b_star*gain)
 
 #Defines variable parameter for Chebyshev input
 def beta(i):
     global mu
-    return np.exp(mu*i*(1-i))
+    return math.exp(mu*i*(1-i))
 
 #Generates iteration number of terms of the 2D-LCCM map
 def generateCleanSequence(iterations, x_0, y_0):
@@ -37,24 +38,11 @@ def generateCleanSequence(iterations, x_0, y_0):
         x, y = f(x,y)
 
     iterations -=1000
-    xvals, yvals = [], []
+    xvals, yvals = np.empty(iterations), np.empty(iterations)
     for j in range(iterations):
         x, y = f(x,y)
-        xvals.append(x)
-        yvals.append(y)
-
+        xvals[j], yvals[j] = x, y
     return xvals, yvals
-
-#Retrieves n terms of the sequences starting from the kth term
-def getSubsequence(xsequence, ysequence, k):
-    global n
-
-    xseq, yseq =[],[]
-    for l in range(k,k+n):
-        xseq.append(xsequence[l])
-        yseq.append(ysequence[l])
-
-    return xseq, yseq
 
 #Spherical coordinate angle for Brownian motion
 def rho(x_n,y_n):
@@ -92,8 +80,8 @@ def brownianMotion(x_n,y_n,z_n,xStream,yStream):
     updateX = x(r_update, theta_1_update, theta_2_update)
     updateY = y(r_update, theta_1_update, theta_2_update)
    
-    x_n = n*x_n + np.sum(updateX)
-    y_n = n*y_n + np.sum(updateY)
+    x_n = n*x_n + math.fsum(updateX)
+    y_n = n*y_n + math.fsum(updateY)
     return x_n, y_n
 
 def eightBitStringify(x):
@@ -101,32 +89,24 @@ def eightBitStringify(x):
 
 #Generates two chaotic matrices using chaotic sequences
 def generateChaoticMatrices(x2n, y2n,K):
-    a1, a2   = [], []
     gain = math.pow(10,8)
-    for a in range(K*K):
-         #Calculate the values for the chaotic matrices and convert them to 8-bit binary values
-         t1 = np.mod( int( (  x2n[a]    + y2n[a]    +1 ) * gain ), 16)
-         a1.append( bin(t1 & 0xFF)[2:].zfill(8) )
+    
+    x, y = np.array(x2n), np.array(y2n)
 
-         t2 = np.mod( int( (  x2n[a]**2 + y2n[a]**2 +1 ) * gain ), 16) 
-         a2.append( bin(t2 & 0xFF)[2:].zfill(8)  )
+    x, y = (x+y+1)*gain, (x**2+y**2+1)*gain
 
-    # x, y = np.array(x2n), np.array(y2n)
+    x, y = x.astype(int), y.astype(int)
 
-    # x, y = (x+y+1)*gain, (x**2+y**2+1)*gain
+    x, y = list(np.mod(x, 16)), list(np.mod(y, 16))
 
-    # x, y = x.astype(int), y.astype(int)
-
-    # x, y = list(np.mod(x, 16)), list(np.mod(y, 16))
-
-    # x = [eightBitStringify(a) for a in x]
-    # y = [eightBitStringify(b) for b in y]
+    x = [eightBitStringify(a) for a in x]
+    y = [eightBitStringify(b) for b in y]
 
 
-    a1 = np.array(a1).reshape(K,K)
-    a2 = np.array(a2).reshape(K,K)
+    x = np.array(x).reshape(K,K)
+    y = np.array(y).reshape(K,K)
 
-    return a1, a2
+    return x,y
 
 #Generates a chaotic matrix based on the rule x2n^(p1)-y2n^(p2)+1
 def generateSecondaryChaoticMatrices(x2n,y2n,p1,p2,K):
@@ -154,7 +134,8 @@ def binaryMask(subsequence):
     x = np.array(subsequence)
     return np.where(x>0.5,1,0)
 
-
+#Direct implementations of swaps are possible, but worst case scenaro has to 
+#rotate 4 rows, and in the case of 2 rows, it reduces to a direct swap
 def rotateRow(matrices, index):
     temps = []
     lastRow = matrices[-1][index].copy()
@@ -230,27 +211,17 @@ def scrambleRubiksCube(f1, f2, f3, f4, f5, f6, rOC,direction,index,extent):
     return [m1, m2, m3, m4, m5, m6]
 
 
-def processData(coordOnes, xStream, yStream, n, c, unnormalizedSeq):
-    x_A, y_A, z_A = coordOnes[c]
-    start = c * n
-    end = start + n
-    x_AStream = xStream[start:end]
-    y_AStream = yStream[start:end]
-    x_A, y_A, z_A = brownianMotion(x_A, y_A, z_A, x_AStream, y_AStream)
-    unnormalizedSeq[c] = (x_A, y_A)
-
-
 def main():
     global x_0, y_0, mu, k, gain, n, fileName, useDefault
     #Read image data
-
+    
     print("Loading image data...")
-
+    preT = time.time_ns()
     
     #Load from file or use new
     if fileName=="NULL":
         fileNames = ["Test","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower","Heh"]
-        fileName = fileNames[8]
+        fileName = fileNames[4]
         image = open("TestImages/Grey{}.ppm".format(fileName),"r")
     else:
         image = open(fileName, "r")
@@ -258,11 +229,10 @@ def main():
 
 
     lines = image.readlines()
-    dataStream=""
-    for i in range(4,len(lines)):
-        dataStream+= lines[i]
     image.close()
-
+    imageLines = lines[4:]
+    dataStream="".join(imageLines)
+  
 
     '''Step 3.1'''
     # Encode the string to bytes and update the hash
@@ -313,11 +283,12 @@ def main():
     hi   = max(int(M), int(N))
 
     print("Generating full image Q1...")
+  
+    
+    imageLines = lines[4:]
+    Q_1 = [int(  line.replace("\n","")  )  for line in imageLines]
 
-    Q_1 = []
-    for i in range(4,len(lines)):
-        line = lines[i].replace("\n","")
-        Q_1.append(  int( line) )
+    
 
     if low!=hi:
         extension = (hi*hi)-len(Q_1)
@@ -328,44 +299,37 @@ def main():
     ''' Part 3.2: Step 2'''
     #Reshape array into 2D array for coordinates
     K = hi
-    coordOnes = []
-    for a in range(K):
-        for b in range(K):
-            coordOnes.append( (a+1,b+1,0))
+    coordOnes = [(a + 1, b + 1, 0) for a in range(K) for b in range(K)]
 
     #Generate chaotic stream using chaotic map
     
 
     x_0, y_0, mu, k, gain = x_0P, y_0P, muP, kP, math.pow(10, kP)
     print("Generating chaotic sequences...")
+   
     xStream, yStream = generateCleanSequence(K*K*n+1000, x_0, y_0)
+    
     print("Implementing parallelized Brownian motion...")
     
     unnormalizedSeq = list(np.zeros(K*K))
 
     streamListX, streamListY = np.array(xStream).reshape(-1,n).tolist(), np.array(yStream).reshape(-1,n).tolist()
+    
+ 
     unnormalizedSeq = [
         brownianMotion(x, y, z, streamListX[c], streamListY[c])
         for c, (x, y, z) in enumerate(coordOnes)
     ]
-
-    
-
+   
     '''Part 3.2: Step 4'''
 
     print("Normalizing data...")
     minX = min(item[0] for item in unnormalizedSeq)
     maxX = max(item[0] for item in unnormalizedSeq)
-
-    minY = min(item[1] for item in unnormalizedSeq)
-    maxY = max(item[1] for item in unnormalizedSeq)
-    #Begin normalizing values
-    xNorm, yNorm = [],[]
-
-    for m in unnormalizedSeq:
-        xNorm.append(   (  (m[0]-minX) * (K)    )  /  (maxX-minX)     )
-        yNorm.append(   (  (m[1]-minY) * (K)    )  /  (maxY-minY)     )
-
+     #Begin normalizing values
+       
+    xNorm = [   (  (m[0]-minX) * (K)    )  /  (maxX-minX) for m in unnormalizedSeq  ]
+    
     print("Generating ranking array...")
 
     #Suffixed with "X" because it ranks based on x-coordinates
@@ -393,6 +357,7 @@ def main():
     y_2n = yStream[0:K*K]
 
     print("Generating all chaotic matrices...")
+    
     A1, A2   = generateChaoticMatrices(x_2n, y_2n, K)
  
     S1 = generateSecondaryChaoticMatrices(x_2n, y_2n,2,2,K)
@@ -453,14 +418,14 @@ def main():
             
             #Lower
             if (o==0 and p==0):
-                Q_3LoPri[o][p] = int(F(o,p)) ^  int (np.mod( int( (1-1.4 * (k_0/15)**2 + (k_1/15)) *precision ) ,16))
-                Q_3HiPri[o][p] = int(G(o,p)) ^ int(np.mod( int(0.3 * (k_0/15) *precision)  ,16))
+                Q_3LoPri[o][p] = int(F(o,p)) ^  int ( int( (1-1.4 * (k_0/15)**2 + (k_1/15)) *precision ) %16)
+                Q_3HiPri[o][p] = int(G(o,p)) ^ int( int(0.3 * (k_0/15) *precision)  %16)
             elif (o!=0 and p==0):
-                Q_3LoPri[o][p] = int(F(o,p)) ^ int(np.mod( int( (1-1.4 * (Q_3LoPri[o-1][K-1]/15)**2 + (Q_3HiPri[o-1][K-1]/15)) *precision ) ,16))
-                Q_3HiPri[o][p] = int(G(o,p)) ^ int(np.mod( int(0.3 * (Q_3LoPri[o-1][K-1]/15) *precision) ,16))
+                Q_3LoPri[o][p] = int(F(o,p)) ^ int( int( (1-1.4 * (Q_3LoPri[o-1][K-1]/15)**2 + (Q_3HiPri[o-1][K-1]/15)) *precision ) %16)
+                Q_3HiPri[o][p] = int(G(o,p)) ^ int( int(0.3 * (Q_3LoPri[o-1][K-1]/15) *precision) %16)
             elif (p!=0):
-                Q_3LoPri[o][p] = int(F(o,p)) ^ int(np.mod( int( (1-1.4 * (Q_3LoPri[o][p-1]/15)**2 + (Q_3HiPri[o][p-1]/15)) *precision ) ,16))
-                Q_3HiPri[o][p] = int(G(o,p)) ^ int(np.mod( int(0.3 * (Q_3LoPri[o][p-1]/15) *precision) ,16))
+                Q_3LoPri[o][p] = int(F(o,p)) ^ int( int( (1-1.4 * (Q_3LoPri[o][p-1]/15)**2 + (Q_3HiPri[o][p-1]/15)) *precision ) %16)
+                Q_3HiPri[o][p] = int(G(o,p)) ^ int( int(0.3 * (Q_3LoPri[o][p-1]/15) *precision) %16)
             
 
 
@@ -502,7 +467,10 @@ def main():
 
     
     file.close()
+    
     print("Done.")
+    postT = time.time_ns()
+    print("Total encryption time: {} seconds".format((postT-preT)*math.pow(10,-9)))
    
     
 
