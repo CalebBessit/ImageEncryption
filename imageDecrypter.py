@@ -2,6 +2,7 @@
 #Caleb Bessit
 #08 October 2023
 
+import os
 import math
 import time
 import numpy as np
@@ -13,7 +14,6 @@ n               = 20
 r               = 100
 hexDigest       = "NULL"
 fileName        = "NULL"
-useDefault      = True
 
 def f(x, y):
     global mu, gain
@@ -209,19 +209,28 @@ def scrambleRubiksCube(f1, f2, f3, f4, f5, f6, rOC,direction,index,extent):
 def main():
     global x_0, y_0, mu, k, gain, n, hexDigest, fileName, useDefault
     #Read image data
+    
+    fileName    = input("Enter the relative path to the file:")
+
+    try:
+        image       = open(fileName,"r")
+    except Exception:
+        print("Image file does not exist/path incorrect.")
+        exit()
+
+    fileNoPath  = os.path.basename(fileName)
+    fileNoPath  = fileNoPath[:-4]
+
+    pre = time.time_ns()
+    
+
+    try:
+        decData         = open("DecryptionData/{}.txt".format(fileNoPath),"r")
+    except Exception:
+        print("Necessary decryption data missing. Please re-try or re-encrypt the image, without deleting or modifying any of the files created.")
+        exit()
 
     print("Loading image data...")
-    pre = time.time_ns()
-
-    if fileName=="NULL":
-        fileNames = ["Test","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower","Heh"]
-        fileIndex = 4
-        fileName = fileNames[fileIndex]
-        image = open("TestImages/GreyEncrypted{}.ppm".format(fileName),"r")
-    else:
-        image = open(fileName, "r")
-    
-    decData         = open("DecryptionData/{}.txt".format(fileName),"r")
     lines           = decData.readlines()
     hexDigest       = lines[0]
     hexDigest       = hexDigest[hexDigest.rfind(":")+2:]
@@ -351,8 +360,14 @@ def main():
 
     ''' Part 3.2: Step 2'''
     #Reshape array into 2D array for coordinates
+    
+    try:
+        loadedArray = np.load("DecryptionData/{}.npy".format(fileNoPath),allow_pickle=True)
+    except Exception:
+        print("Necessary decryption data missing. Please re-try or re-encrypt the image, without deleting or modifying any of the files created.")
+        exit()
+
     print("Retrieving decryption arrays from file...")
-    loadedArray = np.load("DecryptionData/{}.npy".format(fileName),allow_pickle=True)
     S1, S2, S3, S4, S5 = loadedArray
     print("Splicing into and unscrambling virtual Rubik's cube...")
 
@@ -424,10 +439,10 @@ def main():
     fileContent = "".join(Q_0)
     fileContent = fileHeader + fileContent
 
-    if useDefault:
-        decryptedImage = open("TestImages/GreyDecrypted{}.ppm".format(fileName),"w")
-    else:
-        decryptedImage = open("GreyDecrypted{}.ppm".format(fileName),"w")
+    decryptedImagePath = "decryptedImages/{}.ppm".format(fileNoPath)
+    os.makedirs(os.path.dirname(decryptedImagePath), exist_ok=True)
+
+    decryptedImage = open(decryptedImagePath,"w")
     decryptedImage.write(fileContent)
     decryptedImage.close()
 

@@ -2,6 +2,7 @@
 #Caleb Bessit
 #05 October 2023
 
+import os
 import math
 import time
 import hashlib
@@ -16,7 +17,7 @@ gain                = math.pow(10,k)
 n                   = 20
 r                   = 100
 fileName            = "NULL"
-useDefault          = True
+
 
 def f(x, y):
     global mu, gain
@@ -215,19 +216,19 @@ def main():
     global x_0, y_0, mu, k, gain, n, fileName, useDefault
     #Read image data
     
-    print("Loading image data...")
-    preT = time.time_ns()
+    
     
     #Load from file or use new
-    if fileName=="NULL":
-        fileNames = ["Test","Explosion", "Fence","Ishigami","Pikachu","PowerLines","Shirogane","Tower","Heh"]
-        fileName = fileNames[4]
-        image = open("TestImages/Grey{}.ppm".format(fileName),"r")
-    else:
+    fileName = input("Enter the relative path of the image file: ")
+    
+    preT = time.time_ns()
+    try:
         image = open(fileName, "r")
-        useDefault = False
+    except Exception:
+        print("Image file does not exist/path incorrect.")
+        exit()
 
-
+    print("Loading image data...")
     lines = image.readlines()
     image.close()
     imageLines = lines[4:]
@@ -450,18 +451,24 @@ def main():
     fileContent = "".join(Q_4)
     fileContent = fileHeader + fileContent
 
-    if useDefault:
-        scrambledImage = open("TestImages/GreyEncrypted{}.ppm".format(fileName),"w")
-    else:
-        scrambledImage = open("GreyEncrypted{}.ppm".format(fileName),"w")
+    #Reduce path to file name only, without extention
+    fileName = os.path.basename(fileName)
+    fileName = fileName[:-4]
 
+    sImagePath = "encryptedImages/{}.ppm".format(fileName)
+    os.makedirs(os.path.dirname(sImagePath), exist_ok=True)
+    scrambledImage = open(sImagePath,"w")
     scrambledImage.write(fileContent)
     scrambledImage.close()
 
     print("Saving decryption data to file...")
 
-    np.save("DecryptionData/{}.npy".format(fileName), [S1,S2,S3,S4,S5])
-    file = open("DecryptionData/{}.txt".format(fileName),"w")
+    decryptDataPath = "DecryptionData/{}.npy".format(fileName)
+    decryptTextPath = "DecryptionData/{}.txt".format(fileName)
+    os.makedirs(os.path.dirname(decryptDataPath), exist_ok=True)
+    os.makedirs(os.path.dirname(decryptTextPath), exist_ok=True)
+    np.save(decryptDataPath, [S1,S2,S3,S4,S5])
+    file = open(decryptTextPath,"w")
     print("Hash Code: {}".format(hexDigest),file=file)
     print("Initial keys <x_0, y_0, mu, k>: {}, {}, {}, {}".format(x_0S, y_0S, muS, kS),file=file)
 
